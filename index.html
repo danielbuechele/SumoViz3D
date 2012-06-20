@@ -44,7 +44,6 @@ var geometryData = $.parseJSON('[{"geometry":[[0,0],[41.76,0],[41.76,54.04],[0,5
 var renderer, scene, lookAt, camera, $container, numberPedestrians, geometrySize = {"x":0,"y":0};
 var pedestrianObjects = [];
 
-
 document.addEventListener( 'mousedown', mouseDown, false );
 document.addEventListener( 'mouseup', mouseUp, false );
 document.addEventListener( 'mousemove', mouseMove, false );
@@ -53,7 +52,8 @@ document.addEventListener( 'keyup', keyUp, false );
 
 
 function init() {
-
+    
+    
 	$container = $('#container');
 	
 	// set the scene size
@@ -67,6 +67,12 @@ function init() {
 	    FAR = 10000;
 
 	renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.shadowMapEnabled = true;
+    renderer.shadowMapSoft = false;
+    renderer.shadowCameraFov = 50;
+    renderer.shadowMapWidth = 1024;
+    renderer.shadowMapHeight = 1024; 
+    
 	camera = new THREE.PerspectiveCamera(  VIEW_ANGLE,
 	                                ASPECT,
 	                                NEAR,
@@ -97,8 +103,6 @@ function init() {
 	// attach the render-supplied DOM element
 	$container.append(renderer.domElement);
     
-        
-    console.log(geometrySize);
 	
 	lineSpacing = 2;
 	
@@ -110,6 +114,7 @@ function init() {
 	for ( var i = 0; i <= Math.ceil(geometrySize.y/lineSpacing); i ++ ) {
 		var line = new THREE.Line( geometry, linesMaterial );
 		line.position.z = ( i * lineSpacing );
+		line.receiveShadow = true;
 		scene.add( line );
 	}
 
@@ -119,30 +124,52 @@ function init() {
 	for ( var i = 0; i <= Math.ceil(geometrySize.x/lineSpacing); i ++ ) {
 		var line = new THREE.Line( geometry, linesMaterial );
 		line.position.x = ( i * lineSpacing );
+		line.receiveShadow = true;
 		scene.add( line );
 	}
-	
-
-	baseMaterial = new THREE.MeshBasicMaterial({color: 0xeaeaea});
-	base = new THREE.Mesh( new THREE.CubeGeometry( Math.ceil(geometrySize.x/lineSpacing)*lineSpacing, .01, Math.ceil(geometrySize.y/lineSpacing)*lineSpacing), baseMaterial);
-	base.position = new THREE.Vector3( Math.ceil(geometrySize.x/lineSpacing)*lineSpacing/2, -.01, Math.ceil(geometrySize.y/lineSpacing)*lineSpacing/2);
-    console.log(base);
-    scene.add( base );
+    	
+    
+    var planeGeo = new THREE.PlaneGeometry(Math.ceil(geometrySize.x/lineSpacing)*lineSpacing, Math.ceil(geometrySize.y/lineSpacing)*lineSpacing, 10, 10);
+    var planeMat = new THREE.MeshLambertMaterial({color: 0xeaeaea});
+    var plane = new THREE.Mesh(planeGeo, planeMat);
+    plane.rotation.x = -Math.PI/2;
+    plane.position = new THREE.Vector3( Math.ceil(geometrySize.x/lineSpacing)*lineSpacing/2, -.01, Math.ceil(geometrySize.y/lineSpacing)*lineSpacing/2);
+    plane.receiveShadow = true;
+    scene.add(plane);
     
 	// and the camera
 	scene.add(camera);
 
+    
+    // LIGHTS
+    
+    light = new THREE.DirectionalLight(0xffffff,0.5,50);
+    light.position.x = -20;
+    light.position.y = 50;
+    light.position.z = -20;
 
-	// LIGHTS
-    ambientLight = new THREE.AmbientLight( 0x444444 );
+    light.shadowCameraNear = 0.1;
+    light.shadowCameraFar = 100;
+    
+    light.shadowCameraLeft = 0;
+    light.shadowCameraRight = 100;
+    light.shadowCameraTop = 100;
+    light.shadowCameraBottom = 0;
+
+
+    light.castShadow = true;
+    light.shadowCameraVisible = true;
+    scene.add( light );
+    
+
+    ambientLight = new THREE.AmbientLight( 0x777777 );
     scene.add( ambientLight );
-    pointLight = new THREE.PointLight( 0xffffff, 1.25, 1000 );
-    pointLight.position.set( 0, 0, 600 );
-    scene.add( pointLight );
-    directionalLight = new THREE.DirectionalLight( 0xdddddd );
-    directionalLight.position.set( 1, -0.5, -1 );
-    scene.add( directionalLight ); 
+    
+    
 
+
+     
+    
     
     drawGeometry();
     
@@ -164,6 +191,18 @@ function init() {
         cube.visible = false;
     }
     
+    
+    
+    
+    
+    
+    
+
+
+
+
+
+    
  
 	// draw!
 	setInterval(camLoop, 1000/30);
@@ -178,48 +217,102 @@ function drawGeometry() {
     for (i=0;i<geometryData.length;i++) {
     
         if (geometryData[i].type=="obstacle") {
-            console.log("draw obstacle");
+
             polygonPoints = [[0,0]];
             for (j=0;j<geometryData[i].geometry.length;j++) {
                 polygonPoints.push(new THREE.Vector2(geometryData[i].geometry[j][0],geometryData[i].geometry[j][1]));
             }
             
-            var californiaShape = new THREE.Shape( polygonPoints );
-            var solid = new THREE.ExtrudeGeometry( californiaShape, { amount: geometryData[i].height, bevelEnabled: false });
-            var mesh = new THREE.SceneUtils.createMultiMaterialObject(solid, [ new THREE.MeshLambertMaterial( { color: 0xbbbbbb } )]);
-            mesh.rotation.set( Math.PI/2,0,0 );
+            var solid = new THREE.ExtrudeGeometry( new THREE.Shape( polygonPoints ), { amount: geometryData[i].height, bevelEnabled: false });
+            mesh = new THREE.Mesh(solid,  new THREE.MeshLambertMaterial()),
             mesh.position.set( 0, geometryData[i].height, 0 );
+            mesh.rotation.set(Math.PI/2,0,0);
+            mesh.receiveShadow = true;
+            mesh.castShadow  = true;
             scene.add(mesh);
         
-        } else if (geometryData[i].type=="wall") {
+        } if (geometryData[i].type=="wall") {
+            
+            for (j=0;j<geometryData[i].geometry.length-1;j++) {
+            
+                //console.log(geometryData[i].geometry[j+1]);
+                if (geometryData[i].geometry[j+1]) {
+                    one = new THREE.Vector3(geometryData[i].geometry[j][0],0,geometryData[i].geometry[j][1]);
+                    two = new THREE.Vector3(geometryData[i].geometry[j+1][0],0,geometryData[i].geometry[j+1][1]);
+                    
+                    material = new THREE.MeshLambertMaterial(),
+                    rectangle = new THREE.PlaneGeometry(one.distanceTo(two), geometryData[i].height);
+                    mesh = new THREE.Mesh(rectangle, material);
+                    mesh.translateX((one.x+two.x)/2);
+                    mesh.translateZ((one.z+two.z)/2);
+                    //mesh.translateY(geometryData[i].height/2);
+                    mesh.translateY(-1);
+                    
+                    zero = new THREE.Vector3(0,0,1);
+                    ab = new THREE.Vector3(0,0,0);
+                    ab.sub(one,two).normalize();
+        
+                    mesh.rotation.set(0,Math.PI/2+Math.acos(ab.dot(zero)),0);
+
+                    mesh.doubleSided = true;
+                    scene.add(mesh);
+                }
+            }
+            
+            
+            one = new THREE.Vector3(-5,0,-3);
+            two = new THREE.Vector3(0,0,0);
+            
+            material = new THREE.MeshLambertMaterial(),
+            rectangle = new THREE.PlaneGeometry(one.distanceTo(two), 2);
+            mesh = new THREE.Mesh(rectangle, material);
+            
+            mesh.translateX((one.x+two.x)/2);
+            mesh.translateZ((one.z+two.z)/2);
+            
+            zero = new THREE.Vector3(0,0,1);
+            ab = new THREE.Vector3(0,0,0);
+            ab.sub(one,two).normalize();
+            console.log(ab);
+            console.log(zero);
+            console.log();
+            //ab.dot(zero)
+            mesh.rotation.set(0,Math.PI/2+Math.acos(ab.dot(zero)),0);
+
+            mesh.doubleSided = true;
+            scene.add(mesh);
+            
+            
 
             
         } else if (geometryData[i].type=="source") {
-            console.log("draw source");
+
             polygonPoints = [[0,0]];
             for (j=0;j<geometryData[i].geometry.length;j++) {
                 polygonPoints.push(new THREE.Vector2(geometryData[i].geometry[j][0],geometryData[i].geometry[j][1]));
             }
             
-            var californiaShape = new THREE.Shape( polygonPoints );
-            var solid = new THREE.ExtrudeGeometry( californiaShape, { amount: 1, bevelEnabled: false });
-            var mesh = new THREE.SceneUtils.createMultiMaterialObject(solid, [ new THREE.MeshLambertMaterial( { color: 0xff0000 } )]);
-            mesh.rotation.set( Math.PI/2,0,0 );
+            var solid = new THREE.ExtrudeGeometry( new THREE.Shape( polygonPoints ), { amount: 1, bevelEnabled: false });
+            mesh = new THREE.Mesh(solid,  new THREE.MeshLambertMaterial()),
             mesh.position.set( 0, 1, 0 );
+            mesh.rotation.set(Math.PI/2,0,0);
+            mesh.receiveShadow = true;
+            mesh.castShadow  = true;
             scene.add(mesh);
             
         } else if (geometryData[i].type=="target") {
-            console.log("draw target");
+
             polygonPoints = [[0,0]];
             for (j=0;j<geometryData[i].geometry.length;j++) {
                 polygonPoints.push(new THREE.Vector2(geometryData[i].geometry[j][0],geometryData[i].geometry[j][1]));
             }
             
-            var californiaShape = new THREE.Shape( polygonPoints );
-            var solid = new THREE.ExtrudeGeometry( californiaShape, { amount: 1, bevelEnabled: false });
-            var mesh = new THREE.SceneUtils.createMultiMaterialObject(solid, [ new THREE.MeshLambertMaterial( { color: 0x00ff00 } )]);
-            mesh.rotation.set( Math.PI/2,0,0 );
+            var solid = new THREE.ExtrudeGeometry( new THREE.Shape( polygonPoints ), { amount: 1, bevelEnabled: false });
+            mesh = new THREE.Mesh(solid,  new THREE.MeshLambertMaterial()),
             mesh.position.set( 0, 1, 0 );
+            mesh.rotation.set(Math.PI/2,0,0);
+            mesh.receiveShadow = true;
+            mesh.castShadow  = true;
             scene.add(mesh);
             
         }
@@ -290,11 +383,13 @@ function camLoop () {
 	}
 	
 	//don't walk out of geometry
+	
+	/*
 	if (lookAt.z < 0 ) lookAt.z = 0;
 	if (lookAt.x < 0 ) lookAt.x = 0;
 	if (lookAt.z > geometrySize.y ) lookAt.z = geometrySize.y;
 	if (lookAt.x > geometrySize.x ) lookAt.x = geometrySize.x;
-
+*/
 }
 
 var pedFrame = 0;
