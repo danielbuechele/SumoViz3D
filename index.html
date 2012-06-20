@@ -233,57 +233,23 @@ function drawGeometry() {
         
         } if (geometryData[i].type=="wall") {
             
-            for (j=0;j<geometryData[i].geometry.length-1;j++) {
+            var lineMat = new THREE.LineBasicMaterial( { color: 0xff0000, opacity: 1, linewidth: 1 } );
+            var wall = new THREE.Geometry();
             
-                //console.log(geometryData[i].geometry[j+1]);
-                if (geometryData[i].geometry[j+1]) {
-                    one = new THREE.Vector3(geometryData[i].geometry[j][0],0,geometryData[i].geometry[j][1]);
-                    two = new THREE.Vector3(geometryData[i].geometry[j+1][0],0,geometryData[i].geometry[j+1][1]);
-                    
-                    material = new THREE.MeshLambertMaterial(),
-                    rectangle = new THREE.PlaneGeometry(one.distanceTo(two), geometryData[i].height);
-                    mesh = new THREE.Mesh(rectangle, material);
-                    mesh.translateX((one.x+two.x)/2);
-                    mesh.translateZ((one.z+two.z)/2);
-                    //mesh.translateY(geometryData[i].height/2);
-                    mesh.translateY(-1);
-                    
-                    zero = new THREE.Vector3(0,0,1);
-                    ab = new THREE.Vector3(0,0,0);
-                    ab.sub(one,two).normalize();
-        
-                    mesh.rotation.set(0,Math.PI/2+Math.acos(ab.dot(zero)),0);
-
-                    mesh.doubleSided = true;
-                    scene.add(mesh);
-                }
+            for (j=0;j<geometryData[i].geometry.length;j++) {
+                //wall.vertices.push(new THREE.Vector3(geometryData[i].geometry[j][0], 0, geometryData[i].geometry[j][1]));
+                wall.vertices.push( new THREE.Vertex( new THREE.Vector3(geometryData[i].geometry[j][0], 0, geometryData[i].geometry[j][1])));
             }
             
+            /*
+           
+            wall.vertices.push( new THREE.Vertex( new THREE.Vector3(-0, 0, 0) ) );
+            wall.vertices.push( new THREE.Vertex( new THREE.Vector3( 10, 0, 10) ) );
+            wall.vertices.push( new THREE.Vertex( new THREE.Vector3( 7, 0, 15) ) );
+        */
+            line = new THREE.Line(wall, lineMat);
+            scene.add(line);
             
-            one = new THREE.Vector3(-5,0,-3);
-            two = new THREE.Vector3(0,0,0);
-            
-            material = new THREE.MeshLambertMaterial(),
-            rectangle = new THREE.PlaneGeometry(one.distanceTo(two), 2);
-            mesh = new THREE.Mesh(rectangle, material);
-            
-            mesh.translateX((one.x+two.x)/2);
-            mesh.translateZ((one.z+two.z)/2);
-            
-            zero = new THREE.Vector3(0,0,1);
-            ab = new THREE.Vector3(0,0,0);
-            ab.sub(one,two).normalize();
-            console.log(ab);
-            console.log(zero);
-            console.log();
-            //ab.dot(zero)
-            mesh.rotation.set(0,Math.PI/2+Math.acos(ab.dot(zero)),0);
-
-            mesh.doubleSided = true;
-            scene.add(mesh);
-            
-            
-
             
         } else if (geometryData[i].type=="source") {
 
