@@ -36,13 +36,13 @@ function func(data) {
 	
 	
 	db.save({
-		timecode: data[0],
-		pedid: data[1],
-		x: data[2],
-		y: data[3],
-		z: data[4],
-		level: data[5],
-		density: data[6],
+		time: parseFloat(data[0]),
+		pedid: parseInt(data[1]),
+		x: parseFloat(data[2]),
+		y: parseFloat(data[3]),
+		z: parseFloat(data[4]),
+		level: parseInt(data[5]),
+		density: parseFloat(data[6]),
 	}, function (err, res) {
 		if (err) {} else {}
 	});
