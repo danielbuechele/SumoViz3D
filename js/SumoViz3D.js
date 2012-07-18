@@ -51,6 +51,7 @@ $(function() {
 	
 	$("#showgrid").change(function () {drawGeometry()});
 	$("#floortexture").change(function () {drawGeometry()});
+	$("#walltexture").change(function () {drawGeometry()});
 
 });
 
@@ -77,7 +78,7 @@ var renderer, scene, lookAt, camera, $container, numberPedestrians, geometrySize
 var pedestrianObjects = [];
 var plane;
 var grid = [];
-
+var geometryObjects = [];
 
 isPlaying = true;
 
@@ -181,6 +182,7 @@ function init() {
 	plane.doubleSided = true;
 	scene.add(plane);
 
+
 	// and the camera
 	scene.add(camera);
 
@@ -220,7 +222,6 @@ function init() {
 	drawGeometry();
 
 
-
 	//create pedestrian Objects
 	numberPedestrians = 0;
 	for (i=0;i<animation.rows.length;i++) {
@@ -245,7 +246,11 @@ function init() {
 	// draw!
 	setInterval(camLoop, 1000/30);
 	setInterval(drawPedestrians, 1000/5);
-	renderer.render(scene, camera);    
+	renderer.render(scene, camera);  
+	
+	//update on window resize
+	var windowResize = THREEx.WindowResize(renderer, camera);
+	    
 	animate();
 }
 
@@ -270,11 +275,11 @@ function getMaterialForTexture( path ) {
 
 function drawGeometry() {
 	
-
+	//Plane texture
 	plane.material = getMaterialForTexture($("#floortexture").val());
 	
 
-	
+	//grid
 	if ($("#showgrid").attr('checked')) {
 		console.log("show grid");
 		for (i = 0;i<grid.length;i++) {
@@ -287,13 +292,16 @@ function drawGeometry() {
 		}
 	}
 	
-
 	
+
+	//draw geomety
 	for (i=0;i<geometryData.length;i++) {
-
+		console.log(i);
+		//make 2-point-obstacles to walls
 		if (geometryData[i].geometry.length < 3 && geometryData[i].type=="obstacle") geometryData[i].type="wall";
-
-		if (geometryData[i].type=="obstacle") {
+		
+		//render OBSTACLES
+		if (geometryData[i].type=="obstacle" && !geometryObjects[i]) {
 			
 			polygonPoints = [[0,0]];
 			for (j=0;j<geometryData[i].geometry.length;j++) {
@@ -306,15 +314,17 @@ function drawGeometry() {
 			mesh.rotation.set(Math.PI/2,0,0);
 			mesh.castShadow  = true;
 			scene.add(mesh);
-
-		} if (geometryData[i].type=="wall") {
+			geometryObjects[i] = mesh;
+		
+		//render WALLS
+		} else if (geometryData[i].type=="wall" && !geometryObjects[i]) {
+			
+			wallDepth = 0.07;
+			wallHeight = 1;
+			var mesh = new THREE.Mesh(new THREE.CubeGeometry(0,0,0), new THREE.MeshLambertMaterial());
 			
 			for (j=0;j<geometryData[i].geometry.length;j++) {
 				if (geometryData[i].geometry[j+1]) {
-					
-					
-					wallDepth = 0.07;
-					wallHeight = 1;
 					
 					a = new THREE.Vector2(geometryData[i].geometry[j][0],geometryData[i].geometry[j][1]);
 					b = new THREE.Vector2(geometryData[i].geometry[j+1][0],geometryData[i].geometry[j+1][1]);
@@ -329,22 +339,28 @@ function drawGeometry() {
 					shape.lineTo(b.x+wallDepth*move.x, b.y+wallDepth*move.y);
 					shape.lineTo(a.x+wallDepth*move.x, a.y+wallDepth*move.y);
 					shape.lineTo(a.x,a.y);
-		
-
-					var planeTex = new THREE.ImageUtils.loadTexture("textures/grass.jpg");
-					planeTex.wrapS = planeTex.wrapT = THREE.RepeatWrapping;
-					planeTex.repeat.set(1, 1);
-					var solid = new THREE.ExtrudeGeometry(shape, { amount: wallHeight, bevelEnabled: false });
-					wallMesh = new THREE.Mesh(solid, new THREE.MeshLambertMaterial({ map : planeTex }));
 					
-					wallMesh.rotation.x = Math.PI/2;
-					wallMesh.position.y = wallHeight;
-					wallMesh.castShadow = true;
-					scene.add(wallMesh);
+					var solid = new THREE.ExtrudeGeometry(shape, { amount: wallHeight, bevelEnabled: false });
+					addmesh = new THREE.Mesh(solid, new THREE.MeshLambertMaterial());
+					addmesh.rotation.x = Math.PI/2;
+					addmesh.position.y = wallHeight;
+					
+					
+					THREE.GeometryUtils.merge(mesh.geometry,addmesh);
+
 				}
 			}
 			
-		} else if (geometryData[i].type=="source") {
+			mesh.geometry.computeBoundingSphere();
+			//mesh.doubleSided = true;
+			mesh.castShadow = true;
+			scene.add(mesh);
+			geometryObjects.push(mesh);
+			
+			
+			
+		//render SOURCE
+		} else if (geometryData[i].type=="source" && !geometryObjects[i]) {
 
 			polygonPoints = [[0,0]];
 			for (j=0;j<geometryData[i].geometry.length;j++) {
@@ -357,8 +373,10 @@ function drawGeometry() {
 			mesh.rotation.set(Math.PI/2,0,0);
 			mesh.castShadow  = true;
 			scene.add(mesh);
+			geometryObjects[i] = mesh;
 
-		} else if (geometryData[i].type=="target") {
+		//render TARGET
+		} else if (geometryData[i].type=="target" && !geometryObjects[i]) {
 
 			polygonPoints = [[0,0]];
 			for (j=0;j<geometryData[i].geometry.length;j++) {
@@ -371,10 +389,20 @@ function drawGeometry() {
 			mesh.rotation.set(Math.PI/2,0,0);
 			mesh.castShadow  = true;
 			scene.add(mesh);
-
-
+			geometryObjects[i] = mesh;
 		}
-
+		
+	}
+	
+	
+	//wall texture
+	for (i=0;i<geometryData.length;i++) {
+		if (geometryData[i].type == "wall") {
+			var texture = new THREE.ImageUtils.loadTexture($("#walltexture").val());
+			texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+			texture.repeat.set(1, 1);
+			geometryObjects[i].material = new THREE.MeshLambertMaterial({map: texture});
+		}
 	}
 	
 	renderer.render(scene, camera); 
