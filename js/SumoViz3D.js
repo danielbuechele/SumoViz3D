@@ -79,14 +79,9 @@ var pedestrianObjects = [];
 var plane;
 var grid = [];
 var geometryObjects = [];
+var controls;
 
 isPlaying = true;
-
-document.addEventListener( 'mousedown', mouseDown, false );
-document.addEventListener( 'mouseup', mouseUp, false );
-document.addEventListener( 'mousemove', mouseMove, false );
-document.addEventListener( 'keydown', keyDown, false );
-document.addEventListener( 'keyup', keyUp, false );
 
 
 function init() {
@@ -124,13 +119,8 @@ function init() {
 	}
 
 
-	lookAt = new THREE.Vector3( geometrySize.x/2, 0, geometrySize.y/2);
-	camera.lookAt(lookAt);
-	// the camera starts at 0,0,0 so pull it back
-	camera.position.z = 20;
-	camera.position.y = 20;
 
-
+	
 	//Stats element
 	stats = new Stats();
 	stats.domElement.style.position = 'absolute';
@@ -217,7 +207,8 @@ function init() {
 	light.position.set( geometrySize.x/2, 200, geometrySize.y/2 );
 	scene.add(light);
 
-
+	controls = new THREE.SphereControls(camera, renderer.domElement);
+	controls.lookAt = new THREE.Vector3(geometrySize.x/2,0,geometrySize.y/2);
 
 	drawGeometry();
 
@@ -244,7 +235,6 @@ function init() {
 
 
 	// draw!
-	setInterval(camLoop, 1000/30);
 	setInterval(drawPedestrians, 1000/5);
 	renderer.render(scene, camera);  
 	
@@ -405,7 +395,7 @@ function drawGeometry() {
 		}
 	}
 	
-	renderer.render(scene, camera); 
+	//renderer.render(scene, camera); 
 
 }
 
@@ -417,81 +407,14 @@ function hueForDensity(density){
 }
 
 
-
-var frame = 0;
-var t = 0;
 function animate(){
 
 	requestAnimationFrame( animate );
-	camera.lookAt( lookAt );
+	controls.update();
 	renderer.render( scene, camera );
-	frame++;
 	stats.update();
 }
 
-
-
-function camLoop () {
-
-	//pan and tilt
-
-	if (mouseDown) {
-			
-		var radius = 18;
-		t += 0.2*(mouseX-mouseOriginX)/$container.width();
-		camera.position.x = lookAt.x + radius * Math.sin(t%(2*Math.PI));
-		camera.position.z = lookAt.z + radius * Math.cos(t%(2*Math.PI));
-
-		camera.position.y += 8*(mouseY-mouseOriginY)/$container.height();
-		if (camera.position.y<5) {camera.position.y=5;}
-		if (camera.position.y>80) {camera.position.y=80;}
-	}
-
-
-	//move
-	direction = camera.position.clone();
-	direction.subSelf(lookAt);
-	direction.setY(0);
-	direction.normalize();
-
-	scale = 0.5;
-
-	if (keysDown[38]) {
-		lookAt.z -= direction.z*scale;
-		lookAt.x -= direction.x*scale;
-		camera.position.z -= direction.z*scale;
-		camera.position.x -= direction.x*scale;
-	}
-	if (keysDown[40]) {
-		lookAt.z += direction.z*scale;
-		lookAt.x += direction.x*scale;
-		camera.position.z += direction.z*scale;
-		camera.position.x += direction.x*scale;
-	}
-	if (keysDown[39]) {
-		direction90 = new THREE.Vector3(-direction.z, 0, direction.x);
-		lookAt.z -= direction90.z*scale;
-		lookAt.x -= direction90.x*scale;
-		camera.position.z -= direction90.z*scale;
-		camera.position.x -= direction90.x*scale;		
-	}
-	if (keysDown[37]) {
-		direction90 = new THREE.Vector3(-direction.z, 0, direction.x);
-		lookAt.z += direction90.z*scale;
-		lookAt.x += direction90.x*scale;
-		camera.position.z += direction90.z*scale;
-		camera.position.x += direction90.x*scale;
-	}
-
-	//don't walk out of geometry
-
-	/*
-	if (lookAt.z < 0 ) lookAt.z = 0;
-	if (lookAt.x < 0 ) lookAt.x = 0;
-	if (lookAt.z > geometrySize.y ) lookAt.z = geometrySize.y;
-	if (lookAt.x > geometrySize.x ) lookAt.x = geometrySize.x;
-*/
-}
 
 var pedFrame = 0;
 function drawPedestrians() {
@@ -527,45 +450,5 @@ function drawPedestrians() {
 	}
 }
 
-var mouseDown = false;
-var mouseOriginX;
-var mouseOriginY;
-function mouseDown(event) {
-	
-	if (event.target.tagName=="CANVAS") {
-		event.preventDefault();
-		mouseDown = true;
-		mouseOriginX = event.clientX;
-		mouseOriginY = event.clientY;
-	}
-}
-
-
-function mouseUp(event) {
-	event.preventDefault();
-	mouseDown = false;
-}
-
-var mouseX = 0;
-var mouseY = 0;
-function mouseMove(event) {
-	event.preventDefault();
-	mouseX = event.clientX;
-	mouseY = event.clientY;
-
-
-}
-
-
-var keysDown = [];
-function keyDown(event) {
-	event.preventDefault();
-	keysDown[event.keyCode] = true;
-}
-
-function keyUp(event) {
-	event.preventDefault();
-	keysDown[event.keyCode] = false;
-}
 
 init();
