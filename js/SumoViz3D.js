@@ -80,6 +80,10 @@ var grid = [];
 var geometryObjects = [];
 var controls;
 
+var pedestrianModel;
+
+var globalScale;
+
 isPlaying = true;
 
 
@@ -87,7 +91,8 @@ function init() {
 
 	$container = $('#container');
 	$("#frameCounter").text("0/"+animation.rows.length);
-
+    
+	
 	// set the scene size
 	var WIDTH = $container.width(),
 		HEIGHT = $container.height();
@@ -99,6 +104,7 @@ function init() {
 		FAR = 1000;
 
 	renderer = new THREE.WebGLRenderer({antialias: true});
+	
 	renderer.shadowMapEnabled = true;
 	renderer.shadowMapSoft = true;
 
@@ -107,7 +113,7 @@ function init() {
 	scene = new THREE.Scene();
 
 
-	//set geometry size
+    //set geometry size
 	for (i=0;i<geometryData.length;i++) {
 		if (geometryData[i].type=="geometry") {
 			for (j=0;j<geometryData[i].geometry.length;j++) {
@@ -116,7 +122,10 @@ function init() {
 			}
 		}
 	}
-
+	
+	
+	//set global scale
+	globalScale = 1/((geometrySize.x+geometrySize.y)/2);
 
 
 	
@@ -141,8 +150,8 @@ function init() {
 	linesMaterial = new THREE.LineBasicMaterial();
 	linesMaterial.color = new THREE.Color( 0xb6b6b6);
 	var lineGeometry = new THREE.Geometry();
-	lineGeometry.vertices.push( new THREE.Vertex( new THREE.Vector3( 0, 0, 0 ) ) );
-	lineGeometry.vertices.push( new THREE.Vertex( new THREE.Vector3( Math.ceil(geometrySize.x/lineSpacing)*lineSpacing, 0, 0 ) ) );
+	lineGeometry.vertices.push( new THREE.Vector3( 0, 0, 0 ) );
+	lineGeometry.vertices.push( new THREE.Vector3( Math.ceil(geometrySize.x/lineSpacing)*lineSpacing, 0, 0 ) );
 	for ( var i = 0; i <= Math.ceil(geometrySize.y/lineSpacing); i ++ ) {
 		var line = new THREE.Line( lineGeometry, linesMaterial );
 		line.position.z = ( i * lineSpacing );
@@ -152,8 +161,8 @@ function init() {
 	}
 	
 	var geometry = new THREE.Geometry();
-	geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( 0, 0, 0 ) ) );
-	geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( 0, 0, Math.ceil(geometrySize.y/lineSpacing)*lineSpacing) ) );
+	geometry.vertices.push( new THREE.Vector3( 0, 0, 0 ) );
+	geometry.vertices.push( new THREE.Vector3( 0, 0, Math.ceil(geometrySize.y/lineSpacing)*lineSpacing) );
 	for ( var i = 0; i <= Math.ceil(geometrySize.x/lineSpacing); i ++ ) {
 		var line = new THREE.Line( geometry, linesMaterial );
 		line.position.x = ( i * lineSpacing );
@@ -168,8 +177,7 @@ function init() {
 	plane.rotation.x = -Math.PI/2;
 	plane.position = new THREE.Vector3( Math.ceil(geometrySize.x/lineSpacing)*lineSpacing/2, -.01, Math.ceil(geometrySize.y/lineSpacing)*lineSpacing/2);
 	plane.receiveShadow = true;
-	plane.doubleSided = true;
-	scene.add(plane);
+	scene.add(plane);  
 
 
 	// and the camera
@@ -177,8 +185,13 @@ function init() {
 
 
 	// LIGHTS
-	light = new THREE.DirectionalLight(0xffffff,0.1);
+	
+	light = new THREE.DirectionalLight(0xffffff,1.0,0.0);
 	light.position = new THREE.Vector3(-2,5,-2).normalize(); 
+
+
+	
+	
 	light.shadowCameraNear = 0.1;
 	light.shadowCameraFar = 50;
 	light.shadowDarkness = 0.1;
@@ -189,9 +202,12 @@ function init() {
 	light.shadowMapWidth = 10048;
 	light.shadowMapHeight = 10048;
 
+/*
+    renderer.shadowMapEnabled = true;
 	//correcting shadow gap between walls und floor
-	light.shadowBias = 0.002;
+	light.shadowBias = 0.002;*/
 	light.castShadow = true;
+	
 	scene.add( light );
 
 	var light = new THREE.SpotLight();
@@ -206,11 +222,15 @@ function init() {
 	light.position.set( geometrySize.x/2, 200, geometrySize.y/2 );
 	scene.add(light);
 
-	controls = new THREE.SphereControls(camera, renderer.domElement);
+
+    drawGeometry();
+    
+    
+	controls = new THREE.SphereControls(geometryObjects ,camera, renderer.domElement, geometrySize);
 	controls.lookAt = new THREE.Vector3(geometrySize.x/2,0,geometrySize.y/2);
     
     
-	drawGeometry();
+	
 
 
 	//create pedestrian Objects
@@ -219,23 +239,55 @@ function init() {
 		if (animation.rows[i].value.length > numberPedestrians) numberPedestrians = animation.rows[i].value.length;
 	}
 
-	for (i=0;i<numberPedestrians;i++) {
-		sphereMaterial = new THREE.MeshLambertMaterial();
-		sphereMaterial.color.setHSV(hueForDensity(0),1,.7);
-		var sphere = new THREE.Mesh(new THREE.SphereGeometry(0.1,10,10),sphereMaterial);
-		sphere.position.y=0.1;
-		pedestrianObjects.push(sphere);
-		scene.add(sphere);
-		sphere.visible = false;
+    //Pedestrian model
+    var loader = new THREE.ColladaLoader();
+    loader.load( './models/pegman.dae', function (result){
+    
+    
+        model = result.scene;
+        /*
+        model.scale.x = 0.4;
+        model.scale.y = 0.4;
+        model.scale.z = 0.4;
+        model.rotation.z = Math.PI;
+        model.position.y +=2.3;*/
+        model.updateMatrix();
+        pedestrianModel = model;
+        
+        pedestrianModel.children[0].geometry.doubleSided = true;
+        
+        for (i=0;i<numberPedestrians;i++) {
+	   
+            sphereMaterial = new THREE.MeshLambertMaterial();
+            sphereMaterial.color.setHSV(hueForDensity(0),1,.7);
+            /*
+            var sphere = new THREE.Mesh(new THREE.SphereGeometry(0.2,10,10),sphereMaterial);
+            sphere.position.y=1.6;
+            pedestrianObjects.push(sphere);
+            scene.add(sphere);
+            sphere.visible = false;
+            */
 
-	}
+            var pedestrian = new THREE.Mesh(pedestrianModel.children[0].geometry,sphereMaterial);
+            pedestrianObjects.push(pedestrian);
+            pedestrian.visible = false;
+            scene.add(pedestrian);
+            
+
+    
+        }
+        
+    });
+    
+    
+
 
 
 	var lineMat = new THREE.LineBasicMaterial( { color: 0x0000ff, opacity: 1, linewidth: 3 } );
 
 
 	// draw!
-	//setInterval(drawPedestrians, 1000/5);
+	setInterval(drawPedestrians, 1000/5);
 	renderer.render(scene, camera);  
 	
 	//update on window resize
@@ -265,6 +317,7 @@ function getMaterialForTexture( path ) {
 
 function drawGeometry() {
 	
+
 	//Plane texture
 	plane.material = getMaterialForTexture($("#floortexture").val());
 	
@@ -302,7 +355,7 @@ function drawGeometry() {
                 
 			} else {
                 //render OBSTACLE
-                polygonPoints = [[0,0]];
+                polygonPoints = [];
                 for (j=0;j<geometryData[i].geometry.length;j++) {
                     polygonPoints.push(new THREE.Vector2(geometryData[i].geometry[j][0],-geometryData[i].geometry[j][1]+geometrySize.y));
                 }
@@ -361,7 +414,7 @@ function drawGeometry() {
 		//render SOURCE, TARGET, FIELD
 		} else if (geometryData[i].type!="geometry" && !geometryObjects[i]) {
 
-			polygonPoints = [[0,0]];
+			polygonPoints = [];
 			for (j=0;j<geometryData[i].geometry.length;j++) {
 				polygonPoints.push(new THREE.Vector2(geometryData[i].geometry[j][0],-geometryData[i].geometry[j][1]+geometrySize.y));
 			}

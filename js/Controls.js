@@ -1,10 +1,10 @@
 
-THREE.SphereControls = function ( camera, domElement ) {
+THREE.SphereControls = function (geometryObjects, camera, domElement ) {
 	
 	this.camera = camera;
 	this.domElement = ( domElement !== undefined ) ? domElement : document;
 	
-	
+	this.geometryObjects = geometryObjects;
 	this.mouseOrigin = new THREE.Vector2(0,0);
 	this.mouseDown = false;
 	this.keysDown = [];
@@ -17,6 +17,7 @@ THREE.SphereControls = function ( camera, domElement ) {
 	
 	this.lookAt = new THREE.Vector3(0,0,0);
 	
+	this.projector = new THREE.Projector();
 	
 	this.init = function ( ) {
 	
@@ -114,6 +115,29 @@ THREE.SphereControls = function ( camera, domElement ) {
 		
 	}
 	
+	this.contextmenu = function( event ) {
+		event.preventDefault();
+		
+				var vector = new THREE.Vector3( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1, 0.5 );
+				this.projector.unprojectVector( vector, this.camera );
+
+				var ray = new THREE.Ray( this.camera.position, vector.subSelf( this.camera.position ).normalize() );
+
+				var intersects = ray.intersectObjects( this.geometryObjects );
+
+				if ( intersects.length > 0 ) {
+
+					intersects[ 0 ].object.material.color.setHex( Math.random() * 0xffffff );
+/*
+					var particle = new THREE.Particle( particleMaterial );
+					particle.position = intersects[ 0 ].point;
+					particle.scale.x = particle.scale.y = 8;
+					scene.add( particle );*/
+
+				}
+		
+	}
+	
 	function bind( scope, fn ) {
 	
 		return function () {
@@ -136,7 +160,7 @@ THREE.SphereControls = function ( camera, domElement ) {
 	// Firefox  
 	this.domElement.addEventListener("DOMMouseScroll", bind( this, this.mousewheel ), false);
 	
-	this.domElement.addEventListener("contextmenu", bind( this, this.keyup ), false); 
+	this.domElement.addEventListener("contextmenu", bind( this, this.contextmenu ), false); 
 	
 	
 }
