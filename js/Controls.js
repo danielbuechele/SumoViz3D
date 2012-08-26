@@ -1,10 +1,12 @@
 
-THREE.SphereControls = function (geometryObjects, camera, domElement ) {
+THREE.SphereControls = function ( camera, domElement ) {
 	
 	this.camera = camera;
 	this.domElement = ( domElement !== undefined ) ? domElement : document;
 	
-	this.geometryObjects = geometryObjects;
+
+	this.objectSettingsActive = false;
+	
 	this.mouseOrigin = new THREE.Vector2(0,0);
 	this.mouseDown = false;
 	this.keysDown = [];
@@ -81,8 +83,10 @@ THREE.SphereControls = function (geometryObjects, camera, domElement ) {
 	
 	this.mousedown = function( event ) {
 		event.preventDefault();
-		this.mouseDown = true;
-		this.mouseOrigin = new THREE.Vector2(event.clientX,event.clientY);
+		if (event.button==0) {
+            this.mouseDown = true;
+            this.mouseOrigin = new THREE.Vector2(event.clientX,event.clientY);
+		}
 	}
 	
 	this.mouseup = function( event ) {
@@ -117,24 +121,45 @@ THREE.SphereControls = function (geometryObjects, camera, domElement ) {
 	
 	this.contextmenu = function( event ) {
 		event.preventDefault();
-		
-				var vector = new THREE.Vector3( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1, 0.5 );
-				this.projector.unprojectVector( vector, this.camera );
+		this.mouseDown = false;
+        var vector = new THREE.Vector3( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1, 0.5 );
+        this.projector.unprojectVector( vector, this.camera );
 
-				var ray = new THREE.Ray( this.camera.position, vector.subSelf( this.camera.position ).normalize() );
+        var ray = new THREE.Ray( this.camera.position, vector.subSelf( this.camera.position ).normalize() );
 
-				var intersects = ray.intersectObjects( this.geometryObjects );
+        var intersects = ray.intersectObjects( geometryObjects );
+        
 
-				if ( intersects.length > 0 ) {
+        if ( intersects.length > 0 && !selectedObject ) {
+            
+            selectedObject = intersects[0].object;
+            
+            
+            
+            if (selectedObject.material.color) {
+            $("#object-settings #objectColor").miniColors('value', '#' + (selectedObject.material.color.r*255).toString(16)
+                                                                       + (selectedObject.material.color.g*255).toString(16)
+                                                                       + (selectedObject.material.color.b*255).toString(16));
+                $("#object-settings .colorer").show();
 
-					intersects[ 0 ].object.material.color.setHex( Math.random() * 0xffffff );
-/*
-					var particle = new THREE.Particle( particleMaterial );
-					particle.position = intersects[ 0 ].point;
-					particle.scale.x = particle.scale.y = 8;
-					scene.add( particle );*/
+            } else {
+                $("#object-settings .colorer").hide();
+            }
+            
+            
+            $("#object-settings").dialog("option", "title", "Object Settings: "+selectedObject.name);
+            
+            if (geometryData[selectedObject.number].type!="obstacle" ||
+                selectedObject.name.indexOf("tree") != -1 || 
+                selectedObject.name.indexOf("plant") != -1) {
+                $("#object-settings .converter").hide();
+            } else {
+                $("#object-settings .converter").show();
+            }
+            $("#object-settings .code").text(geometryData[selectedObject.number].type);
+            $("#object-settings").dialog("open");
 
-				}
+        }
 		
 	}
 	

@@ -41,11 +41,28 @@ $(function() {
 			$(this).addClass("ui-state-active");
 		}
 	});
-	
+		
 	$("#settings").dialog({
 		close: function(event, ui) {$("#settingsbutton").removeClass("ui-state-active");},
 		autoOpen: false,
 		title: "Settings"
+	});
+	
+	$("a.button").button();
+	
+	$("#objectColor").miniColors({
+	   change: function(hex,rgb) {
+	       colorObject({"r":rgb.r/255,"g":rgb.g/255,"b":rgb.b/255});
+	   }
+	   
+	});
+	
+	$("#object-settings").dialog({
+		close: function(event, ui) {
+            selectedObject = null;
+		},
+		autoOpen: false,
+		title: "Object settings"
 	});
 	
 	$("#showgrid").change(function () {drawGeometry()});
@@ -58,6 +75,95 @@ $(function() {
 function downloadScreen() {
 	console.log(renderer.domElement.toDataURL());
 	
+}
+
+function deleteObject(myObject) {
+    console.log("delete");
+    if (!myObject) myObject = selectedObject;
+
+    myObject.visible = false;    
+    
+    //save settings
+    tempobjsettings = readObjectSettings();
+    if (tempobjsettings[myObject.number]) tempobjsettings[myObject.number].deleted = "yes";
+    else tempobjsettings[myObject.number] = {"deleted":"yes"};
+    saveObjectSettings(tempobjsettings);
+    
+    $("#object-settings").dialog("close");
+}
+
+function colorObject(color, myObject) {
+    
+    if (!myObject) myObject = selectedObject;
+    
+    if (!myObject.material.color) return;
+    
+    selectedObject.material.color = color;
+    
+    //save settings
+    tempobjsettings = readObjectSettings();
+    if (tempobjsettings[selectedObject.number]) tempobjsettings[selectedObject.number].color = selectedObject.material.color;
+    else tempobjsettings[selectedObject.number] = {"color":selectedObject.material.color};
+    saveObjectSettings(tempobjsettings);
+    
+}
+
+
+function saveObjectSettings(myObject) {
+    window.localStorage.setItem(animationName+'_objectSettings',JSON.stringify(myObject));
+}
+
+function readObjectSettings() {
+    if (JSON.parse(window.localStorage.getItem(animationName+'_objectSettings'))) {
+        return JSON.parse(window.localStorage.getItem(animationName+'_objectSettings'));
+    } else {
+        return [];
+    }
+} 
+
+
+function convertObject(to, myObject) {
+
+    if (!myObject) myObject = selectedObject;
+        
+    scene.remove(geometryObjects[parseInt(myObject.number)]);
+    geometryData[parseInt(myObject.number)].name = to+"_"+geometryData[parseInt(myObject.number)].name;
+    geometryData[parseInt(myObject.number)].type = "obstacle"; //not necessary as only obstacles are convertable
+    geometryObjects[parseInt(myObject.number)] = null;
+    
+    //save settings
+    tempobjsettings = readObjectSettings();
+    if (tempobjsettings[myObject.number]) tempobjsettings[myObject.number].convert = to;
+    else tempobjsettings[myObject.number] = {"convert":to};
+    saveObjectSettings(tempobjsettings);
+    
+    drawGeometry();
+    $("#object-settings").dialog("close");
+
+}
+
+function loadSettings() {
+    //load settings from localSotrage
+    
+    //show grid?
+    if (window.localStorage.getItem(animationName+'_showGrid')=="no") {
+        $("#showgrid").attr('checked', false);;
+    } else {
+        $("#showgrid").attr('checked', true);
+    }
+    
+    $('#floortexture option[value="'+window.localStorage.getItem(animationName+'_floorTexture')+'"]').attr('selected', 'selected');
+    
+    $('#walltexture option[value="'+window.localStorage.getItem(animationName+'_wallTexture')+'"]').attr('selected', 'selected');
+    
+    
+
+    drawGeometry();
+}
+
+function clearSettings() {
+    window.localStorage.clear();
+    window.location.href = document.URL;
 }
 
 
@@ -78,11 +184,16 @@ var pedestrianObjects = [];
 var plane;
 var grid = [];
 var geometryObjects = [];
+
 var controls;
 
 var pedestrianModel;
 
+var selectedObject;
+
 var globalScale;
+
+var loader = new THREE.ColladaLoader();
 
 isPlaying = true;
 
@@ -125,9 +236,7 @@ function init() {
 	
 	
 	//set global scale
-	globalScale = 1/((geometrySize.x+geometrySize.y)/2);
-
-
+	globalScale = 1/((geometrySize.x+geometrySize.y)/100);
 	
 	//Stats element
 	stats = new Stats();
@@ -146,13 +255,13 @@ function init() {
 
 
 	//grid
-	lineSpacing = 2;
+	lineSpacing = 1;
 	linesMaterial = new THREE.LineBasicMaterial();
 	linesMaterial.color = new THREE.Color( 0xb6b6b6);
 	var lineGeometry = new THREE.Geometry();
 	lineGeometry.vertices.push( new THREE.Vector3( 0, 0, 0 ) );
-	lineGeometry.vertices.push( new THREE.Vector3( Math.ceil(geometrySize.x/lineSpacing)*lineSpacing, 0, 0 ) );
-	for ( var i = 0; i <= Math.ceil(geometrySize.y/lineSpacing); i ++ ) {
+	lineGeometry.vertices.push( new THREE.Vector3( Math.ceil(geometrySize.x*globalScale/lineSpacing)*lineSpacing, 0, 0 ) );
+	for ( var i = 0; i <= Math.ceil(geometrySize.y*globalScale/lineSpacing); i ++ ) {
 		var line = new THREE.Line( lineGeometry, linesMaterial );
 		line.position.z = ( i * lineSpacing );
 		line.receiveShadow = true;
@@ -162,20 +271,23 @@ function init() {
 	
 	var geometry = new THREE.Geometry();
 	geometry.vertices.push( new THREE.Vector3( 0, 0, 0 ) );
-	geometry.vertices.push( new THREE.Vector3( 0, 0, Math.ceil(geometrySize.y/lineSpacing)*lineSpacing) );
-	for ( var i = 0; i <= Math.ceil(geometrySize.x/lineSpacing); i ++ ) {
+	geometry.vertices.push( new THREE.Vector3( 0, 0, Math.ceil(geometrySize.y*globalScale/lineSpacing)*lineSpacing) );
+	for ( var i = 0; i <= Math.ceil(geometrySize.x*globalScale/lineSpacing); i ++ ) {
 		var line = new THREE.Line( geometry, linesMaterial );
 		line.position.x = ( i * lineSpacing );
 		line.receiveShadow = true;
 		scene.add( line );
 		grid.push(line);
 	}
+	
+	//set grid pitch meter
+	$("#scale span").text(Math.round(lineSpacing/globalScale*100)/100+" m");
 
 	//Plane
-	var planeGeo = new THREE.PlaneGeometry(Math.ceil(geometrySize.x/lineSpacing)*lineSpacing, Math.ceil(geometrySize.y/lineSpacing)*lineSpacing, 10, 10);
+	var planeGeo = new THREE.PlaneGeometry(Math.ceil(geometrySize.x*globalScale/lineSpacing)*lineSpacing, Math.ceil(geometrySize.y*globalScale/lineSpacing)*lineSpacing, 10, 10);
 	plane = new THREE.Mesh(planeGeo, new THREE.MeshBasicMaterial({color: 0xdddddd}));
 	plane.rotation.x = -Math.PI/2;
-	plane.position = new THREE.Vector3( Math.ceil(geometrySize.x/lineSpacing)*lineSpacing/2, -.01, Math.ceil(geometrySize.y/lineSpacing)*lineSpacing/2);
+	plane.position = new THREE.Vector3( Math.ceil(geometrySize.x*globalScale/lineSpacing)*lineSpacing/2, -.01, Math.ceil(geometrySize.y*globalScale/lineSpacing)*lineSpacing/2);
 	plane.receiveShadow = true;
 	scene.add(plane);  
 
@@ -223,11 +335,14 @@ function init() {
 	scene.add(light);
 
 
+    //settings must be loaded before geometry is drawn first time
+    loadSettings();
+    
     drawGeometry();
     
     
-	controls = new THREE.SphereControls(geometryObjects ,camera, renderer.domElement, geometrySize);
-	controls.lookAt = new THREE.Vector3(geometrySize.x/2,0,geometrySize.y/2);
+	controls = new THREE.SphereControls(camera, renderer.domElement);
+	controls.lookAt = new THREE.Vector3(geometrySize.x/2*globalScale,0,geometrySize.y/2*globalScale);
     
     
 	
@@ -239,51 +354,54 @@ function init() {
 		if (animation.rows[i].value.length > numberPedestrians) numberPedestrians = animation.rows[i].value.length;
 	}
 
+    
     //Pedestrian model
-    var loader = new THREE.ColladaLoader();
+    /*
     loader.load( './models/pegman.dae', function (result){
     
     
         model = result.scene;
-        /*
-        model.scale.x = 0.4;
-        model.scale.y = 0.4;
-        model.scale.z = 0.4;
-        model.rotation.z = Math.PI;
-        model.position.y +=2.3;*/
+        
+        console.log(model);
+        //model.rotation.z = Math.PI;
+        //model.position.y +=2.3;
         model.updateMatrix();
+        
+        scene.add(model);
         pedestrianModel = model;
-        
-        pedestrianModel.children[0].geometry.doubleSided = true;
-        
+
         for (i=0;i<numberPedestrians;i++) {
 	   
-            sphereMaterial = new THREE.MeshLambertMaterial();
-            sphereMaterial.color.setHSV(hueForDensity(0),1,.7);
-            /*
-            var sphere = new THREE.Mesh(new THREE.SphereGeometry(0.2,10,10),sphereMaterial);
-            sphere.position.y=1.6;
-            pedestrianObjects.push(sphere);
-            scene.add(sphere);
-            sphere.visible = false;
-            */
-
             var pedestrian = new THREE.Mesh(pedestrianModel.children[0].geometry,sphereMaterial);
             pedestrianObjects.push(pedestrian);
             pedestrian.visible = false;
             scene.add(pedestrian);
-            
 
-    
         }
         
     });
+    */
+    
+    for (i=0;i<numberPedestrians;i++) {
+   
+        sphereMaterial = new THREE.MeshLambertMaterial();
+        sphereMaterial.color.setHSV(hueForDensity(0),1,.7);
+        
+        var sphere = new THREE.Mesh(new THREE.SphereGeometry(0.2,10,10),sphereMaterial);
+        sphere.position.y=1.6;
+        pedestrianObjects.push(sphere);
+        sphere.visible = false;
+        scene.add(sphere);
+
+    }
+    
+    
     
     
 
 
 
-	var lineMat = new THREE.LineBasicMaterial( { color: 0x0000ff, opacity: 1, linewidth: 3 } );
+	//var lineMat = new THREE.LineBasicMaterial( { color: 0x0000ff, opacity: 1, linewidth: 3 } );
 
 
 	// draw!
@@ -292,6 +410,7 @@ function init() {
 	
 	//update on window resize
 	var windowResize = THREEx.WindowResize(renderer, camera);
+	
 	    
 	animate();
 }
@@ -317,10 +436,28 @@ function getMaterialForTexture( path ) {
 
 function drawGeometry() {
 	
+    //save settings
+    if($("#showgrid").attr("checked")) {
+        window.localStorage.setItem(animationName+'_showGrid','yes');
+    } else {
+        window.localStorage.setItem(animationName+'_showGrid','no');
+    }
+    
+    window.localStorage.setItem(animationName+'_wallTexture',$("#walltexture").val());
+    window.localStorage.setItem(animationName+'_floorTexture',$("#floortexture").val());
+    
+    //load convert-settings
+    for (i=0;i<readObjectSettings().length;i++) {
+        if (readObjectSettings()[i]) {
+            if (readObjectSettings()[i].convert) {geometryData[i].name = readObjectSettings()[i].convert;}
+        }
+    }
+
 
 	//Plane texture
 	plane.material = getMaterialForTexture($("#floortexture").val());
-	
+	treeBuffer = [];
+	plantBuffer = [];
 
 	//grid
 	if ($("#showgrid").attr('checked')) {
@@ -332,7 +469,6 @@ function drawGeometry() {
 			grid[i].visible = false;
 		}
 	}
-	
 	
 
 	//draw geomety
@@ -346,11 +482,60 @@ function drawGeometry() {
 			if (geometryData[i].name.indexOf("tree") != -1) {
                 //render TREE
                 
+                //must be defined to avoid race-conditions
+                treeBuffer.push(i);
+
+                loader.load( './models/tree.dae', function (result){
+                    model = result.scene.children[1];
+                    tI = treeBuffer.shift();
+                    if(!tI) return;     
+                    model.scale.set(4*globalScale,4*globalScale,4*globalScale);
+
+                    sX=0;sY=0;
+                    console.log(tI);
+                    for (j=0;j<geometryData[tI].geometry.length;j++) {
+                        sX += geometryData[tI].geometry[j][0];
+                        sY += geometryData[tI].geometry[j][1];
+                    }
+
+                    model.position.set(sX/geometryData[tI].geometry.length*globalScale,2*globalScale,(-sY/geometryData[tI].geometry.length+geometrySize.y)*globalScale);
+                    model.name = geometryData[tI].name;
+                    scene.add(model);
+                    geometryObjects[tI] = model;
+
+                    geometryObjects[tI].number = tI;
+
+                
+                });
                 
                 
 			} else if (geometryData[i].name.indexOf("plant") != -1) {
                 //render PLANT
                 
+                //must be defined to avoid race-conditions
+                plantBuffer.push(i);
+                console.log(i);
+                loader.load( './models/bush.dae', function (result){
+                    
+                    model = result.scene.children[1];
+                    pI = plantBuffer.shift();
+                    if(!pI) return;                    
+                    model.scale.set(globalScale,globalScale,globalScale);
+                    
+                    sX=0;sY=0;
+                    for (j=0;j<geometryData[pI].geometry.length;j++) {
+                        sX += geometryData[pI].geometry[j][0];
+                        sY += geometryData[pI].geometry[j][1];
+                    }
+
+                    model.position.set(sX/geometryData[pI].geometry.length*globalScale,0.3*globalScale,(-sY/geometryData[pI].geometry.length+geometrySize.y)*globalScale);
+                    model.name = geometryData[pI].name;
+                    
+                    scene.add(model);
+                    geometryObjects[pI] = model;
+                    geometryObjects[pI].number = pI;
+                
+                });
                 
                 
 			} else {
@@ -360,26 +545,30 @@ function drawGeometry() {
                     polygonPoints.push(new THREE.Vector2(geometryData[i].geometry[j][0],-geometryData[i].geometry[j][1]+geometrySize.y));
                 }
     
-                var solid = new THREE.ExtrudeGeometry( new THREE.Shape( polygonPoints ), { amount: geometryData[i].height, bevelEnabled: false });
+                var solid = new THREE.ExtrudeGeometry( new THREE.Shape( polygonPoints ), { amount: parseInt(geometryData[i].height)*globalScale, bevelEnabled: false });
                 mesh = new THREE.Mesh(solid,  new THREE.MeshLambertMaterial({color: 0x345089})),
-                mesh.position.set( 0, geometryData[i].height, 0 );
+                mesh.position.set( 0, parseFloat(geometryData[i].height)*globalScale, 0 );
                 mesh.rotation.set(Math.PI/2,0,0);
+                mesh.scale.set(globalScale,globalScale,1);
                 mesh.castShadow  = true;
+                mesh.name = geometryData[i].name;
                 scene.add(mesh);
+                
                 geometryObjects[i] = mesh;
+                geometryObjects[i].number = i;
             }
 		//render WALLS
 		} else if (geometryData[i].type=="wall" && !geometryObjects[i]) {
 			
-			wallDepth = 0.07;
-			wallHeight = 1;
+			wallDepth = 0.07*globalScale;
+			wallHeight = 1*globalScale;
 			var mesh = new THREE.Mesh(new THREE.CubeGeometry(0,0,0), new THREE.MeshLambertMaterial());
 			
 			for (j=0;j<geometryData[i].geometry.length;j++) {
 				if (geometryData[i].geometry[j+1]) {
 					
-					a = new THREE.Vector2(geometryData[i].geometry[j][0],-geometryData[i].geometry[j][1]+geometrySize.y);
-					b = new THREE.Vector2(geometryData[i].geometry[j+1][0],-geometryData[i].geometry[j+1][1]+geometrySize.y);
+					a = new THREE.Vector2(geometryData[i].geometry[j][0]*globalScale,(-geometryData[i].geometry[j][1]+geometrySize.y)*globalScale);
+					b = new THREE.Vector2(geometryData[i].geometry[j+1][0]*globalScale,(-geometryData[i].geometry[j+1][1]+geometrySize.y)*globalScale);
 					
 					move = new THREE.Vector2(a.x,a.y);
 					move.subSelf(b);
@@ -405,9 +594,11 @@ function drawGeometry() {
 			
 			mesh.geometry.computeBoundingSphere();
 			//mesh.doubleSided = true;
+			mesh.name = geometryData[i].name;
 			mesh.castShadow = true;
 			scene.add(mesh);
-			geometryObjects.push(mesh);
+			geometryObjects[i] = mesh;
+            geometryObjects[i].number = i;
 			
 			
 			
@@ -416,7 +607,7 @@ function drawGeometry() {
 
 			polygonPoints = [];
 			for (j=0;j<geometryData[i].geometry.length;j++) {
-				polygonPoints.push(new THREE.Vector2(geometryData[i].geometry[j][0],-geometryData[i].geometry[j][1]+geometrySize.y));
+				polygonPoints.push(new THREE.Vector2(geometryData[i].geometry[j][0]*globalScale,(-geometryData[i].geometry[j][1]+geometrySize.y)*globalScale));
 			}
 
 			var solid = new THREE.ExtrudeGeometry( new THREE.Shape( polygonPoints ), { amount: 0.001, bevelEnabled: false });
@@ -426,25 +617,34 @@ function drawGeometry() {
 			mesh.rotation.set(Math.PI/2,0,0);
 			mesh.material.opacity = 0.4;
 			mesh.material.transparent = true;
+			mesh.name = geometryData[i].name;
 			scene.add(mesh);
 			geometryObjects[i] = mesh;
+            geometryObjects[i].number = i;
 
 		}
 		
 	}
 	
-	
 	//wall texture
+	var texture = new THREE.ImageUtils.loadTexture($("#walltexture").val());
 	for (i=0;i<geometryData.length;i++) {
 		if (geometryData[i].type == "wall") {
-			var texture = new THREE.ImageUtils.loadTexture($("#walltexture").val());
 			texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
 			texture.repeat.set(1, 1);
 			geometryObjects[i].material = new THREE.MeshLambertMaterial({map: texture});
+			
 		}
 	}
 	
-	//renderer.render(scene, camera); 
+	
+    //load color and visibility-settings
+    for (i=0;i<readObjectSettings().length;i++) {
+        if (readObjectSettings()[i] && geometryObjects[i]) {
+            if (readObjectSettings()[i].color && geometryObjects[i].material) {colorObject(readObjectSettings()[i].color,geometryObjects[i]);}
+            if (readObjectSettings()[i].deleted=="yes") {deleteObject(geometryObjects[i]);}
+        }
+    }
 
 }
 
@@ -474,8 +674,8 @@ function drawPedestrians() {
 
 			if (animation.rows[pedFrame].value[i]) {
 				pedestrianObjects[i].visible = true;
-				pedestrianObjects[i].position.x = animation.rows[pedFrame].value[i][1][0];
-				pedestrianObjects[i].position.z = -animation.rows[pedFrame].value[i][1][1]+geometrySize.y;
+				pedestrianObjects[i].position.x = animation.rows[pedFrame].value[i][1][0]*globalScale;
+				pedestrianObjects[i].position.z = (-animation.rows[pedFrame].value[i][1][1]+geometrySize.y)*globalScale;
 				pedestrianObjects[i].material.color.setHSV(hueForDensity( animation.rows[pedFrame].value[i][1][2]),1,.7);
 
 			} else {

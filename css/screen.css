@@ -62,15 +62,40 @@ html, body {
 	padding: 5px;
 }
 
-#settings {
+#settings, #object-settings {
     line-height: 200%;    
 }
 
-#settings label {
+#settings label, #object-settings label {
     width: 100px;
     float: left;
 }
 
+.fullwidth {
+    width: 100%;
+}
+
 .pull-left {
     float: left;
+}
+
+#scale {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 100;
+    border-left: 2px solid black;
+    border-right: 2px solid black;
+    width: 70px;
+    text-align: center;
+}
+
+#scale hr {
+    border: none;
+    border-bottom: 2px solid black;
+    margin: 0;
+}
+
+.code {
+    font-family: monospace;
 }

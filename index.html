@@ -6,11 +6,16 @@
     
     <link type="text/css" href="css/ui-darkness/jquery-ui-1.8.21.custom.css" rel="stylesheet" />
     <link rel="stylesheet" type="text/css" href="css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="css/jquery.miniColors.css" />
 
 </head>
 <body>
+
+    <div id="container"></div>
+    
+    
     <div id="hud">
-        <img class="pull-left" src="logo.png" alt="" />
+        <img class="pull-left" src="img/logo.png" alt="" />
         <div id="playbutton" href="" class="ui-state-default ui-corner-all pull-left"><span class="ui-icon ui-icon-pause">play</span></div>
         <div class="pull-left" id="slider-range-min"></div>
         <div class="pull-left" id="frameCounter">0/0</div>
@@ -42,16 +47,21 @@
             <option value="textures/grass.jpg">grass</option>
             <option value="textures/earth.jpg">earth</option>
             <option value="textures/concrete.jpg">concrete</option>
-        </select>
+        </select><br /><br />
+        <a class="button fullwidth" href="javascript:clearSettings()">Delete custom settings</a>
     </div>
     
     <div id="object-settings">
-        
+        <label>type:</label> <span class="code">none</span><br />
+        <div class="colorer"><label>color:</label> <input type="hidden" id="objectColor" /><br /><br /></div>
+        <!--<label>height:</label> <input type="number" min="0.1" max="50" step="0.5" size="5" id="objectHeight" /> m<br />!-->
+        <div class="converter"><a class="button" href="javascript:convertObject('tree')">Convert to tree</a> <a class="button" href="javascript:convertObject('plant')">Convert to plant</a><br /><br /></div>
+        <a class="button fullwidth" id="deleteObject" href="javascript:deleteObject()">Delete this object</a>
     </div>
     
-    <div id="container"></div>
     
     
+    <div id="scale">grid pitch<hr /><span>0.0 m</span></div>
 
 </body>
 
@@ -64,6 +74,9 @@
 <script src="data/betzenberg.js"></script>
 <script src="js/THREEx.requestAnimationFrame.js"></script>
 <script src="js/THREEx.WindowResize.js"></script>
+
+<script src="js/jquery.miniColors.min.js"></script>
+
 
 <script src="js/Controls.js"></script>
 <script src="js/SumoViz3D.js"></script>
