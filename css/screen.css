@@ -99,3 +99,7 @@ html, body {
 .code {
     font-family: monospace;
 }
+
+#stats {
+    z-index: 1000;
+}

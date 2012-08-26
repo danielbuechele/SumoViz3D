@@ -54,7 +54,6 @@ $(function() {
 	   change: function(hex,rgb) {
 	       colorObject({"r":rgb.r/255,"g":rgb.g/255,"b":rgb.b/255});
 	   }
-	   
 	});
 	
 	$("#object-settings").dialog({
@@ -68,7 +67,17 @@ $(function() {
 	$("#showgrid").change(function () {drawGeometry()});
 	$("#floortexture").change(function () {drawGeometry()});
 	$("#walltexture").change(function () {drawGeometry()});
-
+    $("#pedestriancoloring").change(function () {
+        window.localStorage.setItem(animationName+'_pedestrianColoring',$("#pedestriancoloring").val());
+        
+        if ($("#pedestriancoloring").val()=="groups" && groupData) {
+            for (i=0;i<groupData.length;i++) {
+                for (j=0;j<groupData[i].length;j++) {
+                    particles.colors[j].setHSV((173*i/360)%1,1,1);
+                }
+            }
+        }
+    });
 });
 
 
@@ -156,7 +165,7 @@ function loadSettings() {
     
     $('#walltexture option[value="'+window.localStorage.getItem(animationName+'_wallTexture')+'"]').attr('selected', 'selected');
     
-    
+    $('#pedestriancoloring option[value="'+window.localStorage.getItem(animationName+'_pedestrianColoring')+'"]').attr('selected', 'selected');
 
     drawGeometry();
 }
@@ -195,7 +204,7 @@ var globalScale;
 
 var loader = new THREE.ColladaLoader();
 
-isPlaying = true;
+isPlaying = false;
 
 
 function init() {
@@ -333,12 +342,6 @@ function init() {
 	var light = new THREE.SpotLight();
 	light.position.set( geometrySize.x/2, 200, geometrySize.y/2 );
 	scene.add(light);
-
-
-    //settings must be loaded before geometry is drawn first time
-    loadSettings();
-    
-    drawGeometry();
     
     
 	controls = new THREE.SphereControls(camera, renderer.domElement);
@@ -350,59 +353,51 @@ function init() {
 
 	//create pedestrian Objects
 	numberPedestrians = 0;
+	maxPedestrianId = -1;
 	for (i=0;i<animation.rows.length;i++) {
 		if (animation.rows[i].value.length > numberPedestrians) numberPedestrians = animation.rows[i].value.length;
+		if (animation.rows[i].value[animation.rows[i].value.length-1][3] > maxPedestrianId) maxPedestrianId = animation.rows[i].value[animation.rows[i].value.length-1][3];
 	}
 
-    
-    //Pedestrian model
-    /*
-    loader.load( './models/pegman.dae', function (result){
-    
-    
-        model = result.scene;
-        
-        console.log(model);
-        //model.rotation.z = Math.PI;
-        //model.position.y +=2.3;
-        model.updateMatrix();
-        
-        scene.add(model);
-        pedestrianModel = model;
-
-        for (i=0;i<numberPedestrians;i++) {
-	   
-            var pedestrian = new THREE.Mesh(pedestrianModel.children[0].geometry,sphereMaterial);
-            pedestrianObjects.push(pedestrian);
-            pedestrian.visible = false;
-            scene.add(pedestrian);
-
-        }
-        
+    particles = new THREE.Geometry(),
+    pMaterial = new THREE.ParticleBasicMaterial({
+        color: 0xffffff,
+        size: 2*globalScale,
+        map: THREE.ImageUtils.loadTexture("img/ball.png"),
+        transparent : true,
+        alphaTest: 0.5,
+        vertexColors: true
     });
-    */
-    
-    for (i=0;i<numberPedestrians;i++) {
-   
-        sphereMaterial = new THREE.MeshLambertMaterial();
-        sphereMaterial.color.setHSV(hueForDensity(0),1,.7);
-        
-        var sphere = new THREE.Mesh(new THREE.SphereGeometry(0.2,10,10),sphereMaterial);
-        sphere.position.y=1.6;
-        pedestrianObjects.push(sphere);
-        sphere.visible = false;
-        scene.add(sphere);
+	var colors=[];
+	// now create the individual particles
+	for(var p = 0; p <= maxPedestrianId; p++) {
 
-    }
+        particle = new THREE.Vector3(100000, 0.5*globalScale, 0); //render out of sight
+		particle.velocity = new THREE.Vector3(0,0,0);
+		
+		// add it to the geometry
+		particles.vertices.push(particle);
+		pedestrianObjects.push(particle);
+		colors[ p ] = new THREE.Color( 0xffffff );
+		//colors[ p ].setRGB( Math.random(),Math.random(),Math.random() );
+	}
+	
+	// create the particle system
+	particles.colors = colors;
+
+	var particleSystem = new THREE.ParticleSystem(particles,pMaterial);
+    	
+	// add it to the scene
+	scene.add(particleSystem);
+	
+	
+	
+    //settings must be loaded before geometry is drawn first time
+    loadSettings();
+    
+    drawGeometry();
     
     
-    
-    
-
-
-
-	//var lineMat = new THREE.LineBasicMaterial( { color: 0x0000ff, opacity: 1, linewidth: 3 } );
-
 
 	// draw!
 	setInterval(drawPedestrians, 1000/5);
@@ -651,8 +646,15 @@ function drawGeometry() {
 
 
 function hueForDensity(density){
+    // 0<=density<=1
 	scaler = 2;
 	return (105-105*density*scaler)/360;
+}
+
+function hueForSpeed(speed){
+	// 0<=speed<=30
+	scaler = 3.5;
+	return (105-speed*scaler)/360;
 }
 
 
@@ -666,24 +668,55 @@ function animate(){
 
 
 var pedFrame = 0;
+var lastSeen = [];
+
+
 function drawPedestrians() {
 
 	if (animation.rows[pedFrame]) {
 
-		for (i=0;i<numberPedestrians;i++) {
+		for (i=0;i<=maxPedestrianId;i++) {
 
 			if (animation.rows[pedFrame].value[i]) {
-				pedestrianObjects[i].visible = true;
-				pedestrianObjects[i].position.x = animation.rows[pedFrame].value[i][1][0]*globalScale;
-				pedestrianObjects[i].position.z = (-animation.rows[pedFrame].value[i][1][1]+geometrySize.y)*globalScale;
-				pedestrianObjects[i].material.color.setHSV(hueForDensity( animation.rows[pedFrame].value[i][1][2]),1,.7);
-
+				pedestrianObjects[i].x = animation.rows[pedFrame].value[i][0]*globalScale;
+				pedestrianObjects[i].z = (-animation.rows[pedFrame].value[i][1]+geometrySize.y)*globalScale;
+				
+				if ($("#pedestriancoloring").val()=="density") {
+				    particles.colors[i].setHSV(hueForDensity( animation.rows[pedFrame].value[i][2]),1,1);
+				} else if ($("#pedestriancoloring").val()=="speed") {
+				    
+				    if (!lastSeen[animation.rows[pedFrame].value[i][3]] ||
+				        pedFrame-lastSeen[animation.rows[pedFrame].value[i][3]][0]<1) {
+                        //previous point not available => color gray
+                        particles.colors[i].setRGB(0.7,0.7,0.7);
+				    } else {
+				        oldX = animation.rows[lastSeen[animation.rows[pedFrame].value[i][3]][0]].value[lastSeen[animation.rows[pedFrame].value[i][3]][1]][0]*globalScale;
+                        oldZ = animation.rows[lastSeen[animation.rows[pedFrame].value[i][3]][0]].value[lastSeen[animation.rows[pedFrame].value[i][3]][1]][1]*globalScale;
+                        
+                        distance = Math.sqrt(Math.pow((pedestrianObjects[i].x-oldX),2)+Math.pow((pedestrianObjects[i].z-oldZ),2));
+                        
+                        speed = distance/(pedFrame-lastSeen[animation.rows[pedFrame].value[i][3]][0]);
+                        particles.colors[i].setHSV(hueForSpeed(speed),1,1);
+				    }
+				    
+				    
+				}
+                
+                
+                
+                if (isPlaying) lastSeen[animation.rows[pedFrame].value[i][3]] = [pedFrame,i];
+                
 			} else {
-				pedestrianObjects[i].visible = false;
-
+				//pedestrianObjects[i].visible = false;
+                pedestrianObjects[i].x = 100000; //move out of view
+				pedestrianObjects[i].z = 0;
+				
 			}
 
 		}
+		
+		particles.verticesNeedUpdate = true;
+		particles.colorsNeedUpdate = true;
 
 		$("#slider-range-min").slider('value', pedFrame);
 		$('#frameCounter').text(pedFrame+"/"+animation.rows.length);
@@ -693,6 +726,7 @@ function drawPedestrians() {
 		for (i=0;i<numberPedestrians;i++) {pedestrianObjects[i].visible = false;}
 		togglePlay();
 		pedFrame = 0;
+		lastSeen = [];
 		$("#slider-range-min").slider('value', 0);
 		$('#frameCounter').text("0/"+animation.rows.length);
 		//TODO: cancel timer

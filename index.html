@@ -16,7 +16,7 @@
     
     <div id="hud">
         <img class="pull-left" src="img/logo.png" alt="" />
-        <div id="playbutton" href="" class="ui-state-default ui-corner-all pull-left"><span class="ui-icon ui-icon-pause">play</span></div>
+        <div id="playbutton" href="" class="ui-state-default ui-corner-all pull-left"><span class="ui-icon ui-icon-play">play</span></div>
         <div class="pull-left" id="slider-range-min"></div>
         <div class="pull-left" id="frameCounter">0/0</div>
         <div id="nextbutton" href="" class="ui-state-default ui-corner-all pull-left"><span class="ui-icon ui-icon-seek-prev">prev</span></div>
@@ -29,9 +29,9 @@
     <div id="settings">
         <label>coloring:</label>
         <select id="pedestriancoloring">
-            <option value="">by density</option>
-            <option value="">by groups</option>
-            <option value="">by speed</option>
+            <option value="density">by density</option>
+            <option value="groups">by groups</option>
+            <option value="speed">by speed</option>
         </select><br />
         <label>show grid:</label><input type="checkbox" id="showgrid" checked="checked" /><br />
         <label>floor texture:</label>
@@ -71,7 +71,7 @@
 <script src="js/three.min.js"></script>
 <script src="js/ColladaLoader.js"></script>
 <script src="js/Stats.js"></script>
-<script src="data/betzenberg.js"></script>
+<script src="data/corridor.js"></script>
 <script src="js/THREEx.requestAnimationFrame.js"></script>
 <script src="js/THREEx.WindowResize.js"></script>
 
