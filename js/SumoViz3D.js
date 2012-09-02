@@ -4,7 +4,7 @@ $(function() {
 		range: "min",
 		value: 0,
 		min: 0,
-		max: animation.rows.length,
+		max: pedestrianData.rows.length,
 		slide: function( event, ui ) {
 			pedFrame = ui.value;
 		}
@@ -23,13 +23,13 @@ $(function() {
 
 	$("#prevbutton").click(function(){
 		pedFrame++;
-		drawPedestrians();
+		updatePedestrians();
 
 	});
 
 	$("#nextbutton").click(function(){
 		pedFrame--;
-		drawPedestrians();
+		updatePedestrians();
 	});
 	
 	$("#settingsbutton").click(function(){
@@ -68,15 +68,7 @@ $(function() {
 	$("#floortexture").change(function () {drawGeometry()});
 	$("#walltexture").change(function () {drawGeometry()});
     $("#pedestriancoloring").change(function () {
-        window.localStorage.setItem(animationName+'_pedestrianColoring',$("#pedestriancoloring").val());
-        
-        if ($("#pedestriancoloring").val()=="groups" && groupData) {
-            for (i=0;i<groupData.length;i++) {
-                for (j=0;j<groupData[i].length;j++) {
-                    particles.colors[j].setHSV((173*i/360)%1,1,1);
-                }
-            }
-        }
+        coloringChanged();
     });
 });
 
@@ -84,6 +76,36 @@ $(function() {
 function downloadScreen() {
 	console.log(renderer.domElement.toDataURL());
 	
+}
+
+function colorByGroups() {
+
+    for (i=0;i<groupData.rows.length;i++) {
+        for (j=0;j<groupData.rows[i].value.length;j++) {
+            if (particles.colors[groupData.rows[i].value[j]]) particles.colors[groupData.rows[i].value[j]].setHSV((173*i/360)%1,1,1);
+        }
+    }
+}
+
+function coloringChanged() {
+    window.localStorage.setItem(filename+'_pedestrianColoring',$("#pedestriancoloring").val());
+    
+    if ($("#pedestriancoloring").val()=="groups" && groupData) {
+        $("#scale-coloring").hide();
+        colorByGroups();
+    } else if ($("#pedestriancoloring").val()=="speed") {
+        $("#scale-coloring").show();
+        $("#scale-coloring .colortype").text('speed');
+        $("#scale-coloring .colorspace").removeClass('color-density');
+        $("#scale-coloring .colorspace").addClass('color-speed');
+        
+    } else if ($("#pedestriancoloring").val()=="density") {
+        $("#scale-coloring").show();
+        $("#scale-coloring .colortype").text('density');
+        $("#scale-coloring .colorspace").removeClass('color-speed');
+        $("#scale-coloring .colorspace").addClass('color-density');
+        
+    }
 }
 
 function deleteObject(myObject) {
@@ -107,24 +129,24 @@ function colorObject(color, myObject) {
     
     if (!myObject.material.color) return;
     
-    selectedObject.material.color = color;
+    myObject.material.color = color;
     
     //save settings
     tempobjsettings = readObjectSettings();
-    if (tempobjsettings[selectedObject.number]) tempobjsettings[selectedObject.number].color = selectedObject.material.color;
-    else tempobjsettings[selectedObject.number] = {"color":selectedObject.material.color};
+    if (tempobjsettings[myObject.number]) tempobjsettings[myObject.number].color = myObject.material.color;
+    else tempobjsettings[myObject.number] = {"color":myObject.material.color};
     saveObjectSettings(tempobjsettings);
     
 }
 
 
 function saveObjectSettings(myObject) {
-    window.localStorage.setItem(animationName+'_objectSettings',JSON.stringify(myObject));
+    window.localStorage.setItem(filename+'_objectSettings',JSON.stringify(myObject));
 }
 
 function readObjectSettings() {
-    if (JSON.parse(window.localStorage.getItem(animationName+'_objectSettings'))) {
-        return JSON.parse(window.localStorage.getItem(animationName+'_objectSettings'));
+    if (JSON.parse(window.localStorage.getItem(filename+'_objectSettings'))) {
+        return JSON.parse(window.localStorage.getItem(filename+'_objectSettings'));
     } else {
         return [];
     }
@@ -136,8 +158,8 @@ function convertObject(to, myObject) {
     if (!myObject) myObject = selectedObject;
         
     scene.remove(geometryObjects[parseInt(myObject.number)]);
-    geometryData[parseInt(myObject.number)].name = to+"_"+geometryData[parseInt(myObject.number)].name;
-    geometryData[parseInt(myObject.number)].type = "obstacle"; //not necessary as only obstacles are convertable
+    geometryData.rows[parseInt(myObject.number)].value.name = to+"_"+geometryData[parseInt(myObject.number)].name;
+    geometryData.rows[parseInt(myObject.number)].value.type = "obstacle"; //not necessary as only obstacles are convertable
     geometryObjects[parseInt(myObject.number)] = null;
     
     //save settings
@@ -155,18 +177,19 @@ function loadSettings() {
     //load settings from localSotrage
     
     //show grid?
-    if (window.localStorage.getItem(animationName+'_showGrid')=="no") {
+    if (window.localStorage.getItem(filename+'_showGrid')=="no") {
         $("#showgrid").attr('checked', false);;
     } else {
         $("#showgrid").attr('checked', true);
     }
     
-    $('#floortexture option[value="'+window.localStorage.getItem(animationName+'_floorTexture')+'"]').attr('selected', 'selected');
+    $('#floortexture option[value="'+window.localStorage.getItem(filename+'_floorTexture')+'"]').attr('selected', 'selected');
     
-    $('#walltexture option[value="'+window.localStorage.getItem(animationName+'_wallTexture')+'"]').attr('selected', 'selected');
+    $('#walltexture option[value="'+window.localStorage.getItem(filename+'_wallTexture')+'"]').attr('selected', 'selected');
     
-    $('#pedestriancoloring option[value="'+window.localStorage.getItem(animationName+'_pedestrianColoring')+'"]').attr('selected', 'selected');
-
+    $('#pedestriancoloring option[value="'+window.localStorage.getItem(filename+'_pedestrianColoring')+'"]').attr('selected', 'selected');
+    //if ($("#pedestriancoloring").val()=="groups" && groupData) {colorByGroups();}
+    coloringChanged();
     drawGeometry();
 }
 
@@ -210,7 +233,7 @@ isPlaying = false;
 function init() {
 
 	$container = $('#container');
-	$("#frameCounter").text("0/"+animation.rows.length);
+	$("#frameCounter").text("0/"+pedestrianData.rows.length);
     
 	
 	// set the scene size
@@ -234,11 +257,11 @@ function init() {
 
 
     //set geometry size
-	for (i=0;i<geometryData.length;i++) {
-		if (geometryData[i].type=="geometry") {
-			for (j=0;j<geometryData[i].geometry.length;j++) {
-				if (geometryData[i].geometry[j][0]>geometrySize.x) {geometrySize.x = geometryData[i].geometry[j][0];}
-				if (geometryData[i].geometry[j][1]>geometrySize.y) {geometrySize.y = geometryData[i].geometry[j][1];}
+	for (i=0;i<geometryData.rows.length;i++) {
+		if (geometryData.rows[i].value.type=="geometry") {
+			for (j=0;j<geometryData.rows[i].value.geometry.length;j++) {
+				if (geometryData.rows[i].value.geometry[j][0]>geometrySize.x) {geometrySize.x = geometryData.rows[i].value.geometry[j][0];}
+				if (geometryData.rows[i].value.geometry[j][1]>geometrySize.y) {geometrySize.y = geometryData.rows[i].value.geometry[j][1];}
 			}
 		}
 	}
@@ -354,9 +377,9 @@ function init() {
 	//create pedestrian Objects
 	numberPedestrians = 0;
 	maxPedestrianId = -1;
-	for (i=0;i<animation.rows.length;i++) {
-		if (animation.rows[i].value.length > numberPedestrians) numberPedestrians = animation.rows[i].value.length;
-		if (animation.rows[i].value[animation.rows[i].value.length-1][3] > maxPedestrianId) maxPedestrianId = animation.rows[i].value[animation.rows[i].value.length-1][3];
+	for (i=0;i<pedestrianData.rows.length;i++) {
+		if (pedestrianData.rows[i].value.length > numberPedestrians) numberPedestrians = pedestrianData.rows[i].value.length;
+		if (pedestrianData.rows[i].value[pedestrianData.rows[i].value.length-1][3] > maxPedestrianId) maxPedestrianId = pedestrianData.rows[i].value[pedestrianData.rows[i].value.length-1][3];
 	}
 
     particles = new THREE.Geometry(),
@@ -400,7 +423,7 @@ function init() {
     
 
 	// draw!
-	setInterval(drawPedestrians, 1000/5);
+	setInterval(updatePedestrians, 1000/5);
 	renderer.render(scene, camera);  
 	
 	//update on window resize
@@ -433,18 +456,20 @@ function drawGeometry() {
 	
     //save settings
     if($("#showgrid").attr("checked")) {
-        window.localStorage.setItem(animationName+'_showGrid','yes');
+        window.localStorage.setItem(filename+'_showGrid','yes');
+        $("#scale").show();
     } else {
-        window.localStorage.setItem(animationName+'_showGrid','no');
+        window.localStorage.setItem(filename+'_showGrid','no');
+        $("#scale").hide();
     }
     
-    window.localStorage.setItem(animationName+'_wallTexture',$("#walltexture").val());
-    window.localStorage.setItem(animationName+'_floorTexture',$("#floortexture").val());
+    window.localStorage.setItem(filename+'_wallTexture',$("#walltexture").val());
+    window.localStorage.setItem(filename+'_floorTexture',$("#floortexture").val());
     
     //load convert-settings
     for (i=0;i<readObjectSettings().length;i++) {
         if (readObjectSettings()[i]) {
-            if (readObjectSettings()[i].convert) {geometryData[i].name = readObjectSettings()[i].convert;}
+            if (readObjectSettings()[i].convert) {geometryData.rows[i].value.name = readObjectSettings()[i].convert;}
         }
     }
 
@@ -467,14 +492,14 @@ function drawGeometry() {
 	
 
 	//draw geomety
-	for (i=0;i<geometryData.length;i++) {
+	for (i=0;i<geometryData.rows.length;i++) {
 		//make 2-point-obstacles to walls
-		if (geometryData[i].geometry.length < 3 && geometryData[i].type=="obstacle") geometryData[i].type="wall";
+		if (geometryData.rows[i].value.geometry.length < 3 && geometryData.rows[i].value.type=="obstacle") geometryData.rows[i].value.type="wall";
 		
 		//render OBSTACLES
-		if (geometryData[i].type=="obstacle" && !geometryObjects[i]) {
+		if (geometryData.rows[i].value.type=="obstacle" && !geometryObjects[i]) {
 			
-			if (geometryData[i].name.indexOf("tree") != -1) {
+			if (geometryData.rows[i].value.name.indexOf("tree") != -1) {
                 //render TREE
                 
                 //must be defined to avoid race-conditions
@@ -488,13 +513,14 @@ function drawGeometry() {
 
                     sX=0;sY=0;
                     console.log(tI);
-                    for (j=0;j<geometryData[tI].geometry.length;j++) {
-                        sX += geometryData[tI].geometry[j][0];
-                        sY += geometryData[tI].geometry[j][1];
+                    for (j=0;j<geometryData.rows[tI].value.geometry.length;j++) {
+                        sX += geometryData.rows[tI].value.geometry[j][0];
+                        sY += geometryData.rows[tI].value.geometry[j][1];
                     }
 
-                    model.position.set(sX/geometryData[tI].geometry.length*globalScale,2*globalScale,(-sY/geometryData[tI].geometry.length+geometrySize.y)*globalScale);
-                    model.name = geometryData[tI].name;
+                    model.position.set(sX/geometryData.rows[tI].value.geometry.length*globalScale,2*globalScale,(-sY/geometryData.rows[tI].value.geometry.length+geometrySize.y)*globalScale);
+                    model.name = geometryData.rows[tI].value.name;
+                    //model.castShadow = true;
                     scene.add(model);
                     geometryObjects[tI] = model;
 
@@ -504,7 +530,7 @@ function drawGeometry() {
                 });
                 
                 
-			} else if (geometryData[i].name.indexOf("plant") != -1) {
+			} else if (geometryData.rows[i].value.name.indexOf("plant") != -1) {
                 //render PLANT
                 
                 //must be defined to avoid race-conditions
@@ -518,13 +544,13 @@ function drawGeometry() {
                     model.scale.set(globalScale,globalScale,globalScale);
                     
                     sX=0;sY=0;
-                    for (j=0;j<geometryData[pI].geometry.length;j++) {
-                        sX += geometryData[pI].geometry[j][0];
-                        sY += geometryData[pI].geometry[j][1];
+                    for (j=0;j<geometryData.rows[pI].value.geometry.length;j++) {
+                        sX += geometryData.rows[pI].value.geometry[j][0];
+                        sY += geometryData.rows[pI].value.geometry[j][1];
                     }
 
-                    model.position.set(sX/geometryData[pI].geometry.length*globalScale,0.3*globalScale,(-sY/geometryData[pI].geometry.length+geometrySize.y)*globalScale);
-                    model.name = geometryData[pI].name;
+                    model.position.set(sX/geometryData.rows[pI].value.geometry.length*globalScale,0.3*globalScale,(-sY/geometryData.rows[pI].value.geometry.length+geometrySize.y)*globalScale);
+                    model.name = geometryData.rows[pI].value.name;
                     
                     scene.add(model);
                     geometryObjects[pI] = model;
@@ -536,34 +562,34 @@ function drawGeometry() {
 			} else {
                 //render OBSTACLE
                 polygonPoints = [];
-                for (j=0;j<geometryData[i].geometry.length;j++) {
-                    polygonPoints.push(new THREE.Vector2(geometryData[i].geometry[j][0],-geometryData[i].geometry[j][1]+geometrySize.y));
+                for (j=0;j<geometryData.rows[i].value.geometry.length;j++) {
+                    polygonPoints.push(new THREE.Vector2(geometryData.rows[i].value.geometry[j][0],-geometryData.rows[i].value.geometry[j][1]+geometrySize.y));
                 }
     
-                var solid = new THREE.ExtrudeGeometry( new THREE.Shape( polygonPoints ), { amount: parseInt(geometryData[i].height)*globalScale, bevelEnabled: false });
+                var solid = new THREE.ExtrudeGeometry( new THREE.Shape( polygonPoints ), { amount: parseInt(geometryData.rows[i].value.height)*globalScale, bevelEnabled: false });
                 mesh = new THREE.Mesh(solid,  new THREE.MeshLambertMaterial({color: 0x345089})),
-                mesh.position.set( 0, parseFloat(geometryData[i].height)*globalScale, 0 );
+                mesh.position.set( 0, parseFloat(geometryData.rows[i].value.height)*globalScale, 0 );
                 mesh.rotation.set(Math.PI/2,0,0);
                 mesh.scale.set(globalScale,globalScale,1);
                 mesh.castShadow  = true;
-                mesh.name = geometryData[i].name;
+                mesh.name = geometryData.rows[i].value.name;
                 scene.add(mesh);
                 
                 geometryObjects[i] = mesh;
                 geometryObjects[i].number = i;
             }
 		//render WALLS
-		} else if (geometryData[i].type=="wall" && !geometryObjects[i]) {
+		} else if (geometryData.rows[i].value.type=="wall" && !geometryObjects[i]) {
 			
 			wallDepth = 0.07*globalScale;
 			wallHeight = 1*globalScale;
 			var mesh = new THREE.Mesh(new THREE.CubeGeometry(0,0,0), new THREE.MeshLambertMaterial());
 			
-			for (j=0;j<geometryData[i].geometry.length;j++) {
-				if (geometryData[i].geometry[j+1]) {
+			for (j=0;j<geometryData.rows[i].value.geometry.length;j++) {
+				if (geometryData.rows[i].value.geometry[j+1]) {
 					
-					a = new THREE.Vector2(geometryData[i].geometry[j][0]*globalScale,(-geometryData[i].geometry[j][1]+geometrySize.y)*globalScale);
-					b = new THREE.Vector2(geometryData[i].geometry[j+1][0]*globalScale,(-geometryData[i].geometry[j+1][1]+geometrySize.y)*globalScale);
+					a = new THREE.Vector2(geometryData.rows[i].value.geometry[j][0]*globalScale,(-geometryData.rows[i].value.geometry[j][1]+geometrySize.y)*globalScale);
+					b = new THREE.Vector2(geometryData.rows[i].value.geometry[j+1][0]*globalScale,(-geometryData.rows[i].value.geometry[j+1][1]+geometrySize.y)*globalScale);
 					
 					move = new THREE.Vector2(a.x,a.y);
 					move.subSelf(b);
@@ -589,7 +615,7 @@ function drawGeometry() {
 			
 			mesh.geometry.computeBoundingSphere();
 			//mesh.doubleSided = true;
-			mesh.name = geometryData[i].name;
+			mesh.name = geometryData.rows[i].value.name;
 			mesh.castShadow = true;
 			scene.add(mesh);
 			geometryObjects[i] = mesh;
@@ -598,11 +624,11 @@ function drawGeometry() {
 			
 			
 		//render SOURCE, TARGET, FIELD
-		} else if (geometryData[i].type!="geometry" && !geometryObjects[i]) {
+		} else if (geometryData.rows[i].value.type!="geometry" && !geometryObjects[i]) {
 
 			polygonPoints = [];
-			for (j=0;j<geometryData[i].geometry.length;j++) {
-				polygonPoints.push(new THREE.Vector2(geometryData[i].geometry[j][0]*globalScale,(-geometryData[i].geometry[j][1]+geometrySize.y)*globalScale));
+			for (j=0;j<geometryData.rows[i].value.geometry.length;j++) {
+				polygonPoints.push(new THREE.Vector2(geometryData.rows[i].value.geometry[j][0]*globalScale,(-geometryData.rows[i].value.geometry[j][1]+geometrySize.y)*globalScale));
 			}
 
 			var solid = new THREE.ExtrudeGeometry( new THREE.Shape( polygonPoints ), { amount: 0.001, bevelEnabled: false });
@@ -612,7 +638,7 @@ function drawGeometry() {
 			mesh.rotation.set(Math.PI/2,0,0);
 			mesh.material.opacity = 0.4;
 			mesh.material.transparent = true;
-			mesh.name = geometryData[i].name;
+			mesh.name = geometryData.rows[i].value.name;
 			scene.add(mesh);
 			geometryObjects[i] = mesh;
             geometryObjects[i].number = i;
@@ -623,8 +649,8 @@ function drawGeometry() {
 	
 	//wall texture
 	var texture = new THREE.ImageUtils.loadTexture($("#walltexture").val());
-	for (i=0;i<geometryData.length;i++) {
-		if (geometryData[i].type == "wall") {
+	for (i=0;i<geometryData.rows.length;i++) {
+		if (geometryData.rows[i].value.type == "wall") {
 			texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
 			texture.repeat.set(1, 1);
 			geometryObjects[i].material = new THREE.MeshLambertMaterial({map: texture});
@@ -653,13 +679,12 @@ function hueForDensity(density){
 
 function hueForSpeed(speed){
 	// 0<=speed<=30
-	scaler = 3.5;
-	return (105-speed*scaler)/360;
+	scaler = 4;
+	return (360-speed*scaler)/360;
 }
 
 
-function animate(){
-
+function animate() {
 	requestAnimationFrame( animate );
 	controls.update();
 	renderer.render( scene, camera );
@@ -671,31 +696,31 @@ var pedFrame = 0;
 var lastSeen = [];
 
 
-function drawPedestrians() {
+function updatePedestrians() {
 
-	if (animation.rows[pedFrame]) {
+	if (pedestrianData.rows[pedFrame]) {
 
 		for (i=0;i<=maxPedestrianId;i++) {
 
-			if (animation.rows[pedFrame].value[i]) {
-				pedestrianObjects[i].x = animation.rows[pedFrame].value[i][0]*globalScale;
-				pedestrianObjects[i].z = (-animation.rows[pedFrame].value[i][1]+geometrySize.y)*globalScale;
+			if (pedestrianData.rows[pedFrame].value[i]) {
+				pedestrianObjects[i].x = pedestrianData.rows[pedFrame].value[i][0]*globalScale;
+				pedestrianObjects[i].z = (-pedestrianData.rows[pedFrame].value[i][1]+geometrySize.y)*globalScale;
 				
 				if ($("#pedestriancoloring").val()=="density") {
-				    particles.colors[i].setHSV(hueForDensity( animation.rows[pedFrame].value[i][2]),1,1);
+				    particles.colors[i].setHSV(hueForDensity( pedestrianData.rows[pedFrame].value[i][2]),1,1);
 				} else if ($("#pedestriancoloring").val()=="speed") {
 				    
-				    if (!lastSeen[animation.rows[pedFrame].value[i][3]] ||
-				        pedFrame-lastSeen[animation.rows[pedFrame].value[i][3]][0]<1) {
+				    if (!lastSeen[pedestrianData.rows[pedFrame].value[i][3]] ||
+				        pedFrame-lastSeen[pedestrianData.rows[pedFrame].value[i][3]][0]<1) {
                         //previous point not available => color gray
                         particles.colors[i].setRGB(0.7,0.7,0.7);
 				    } else {
-				        oldX = animation.rows[lastSeen[animation.rows[pedFrame].value[i][3]][0]].value[lastSeen[animation.rows[pedFrame].value[i][3]][1]][0]*globalScale;
-                        oldZ = animation.rows[lastSeen[animation.rows[pedFrame].value[i][3]][0]].value[lastSeen[animation.rows[pedFrame].value[i][3]][1]][1]*globalScale;
+				        oldX = pedestrianData.rows[lastSeen[pedestrianData.rows[pedFrame].value[i][3]][0]].value[lastSeen[pedestrianData.rows[pedFrame].value[i][3]][1]][0]*globalScale;
+                        oldZ = pedestrianData.rows[lastSeen[pedestrianData.rows[pedFrame].value[i][3]][0]].value[lastSeen[pedestrianData.rows[pedFrame].value[i][3]][1]][1]*globalScale;
                         
                         distance = Math.sqrt(Math.pow((pedestrianObjects[i].x-oldX),2)+Math.pow((pedestrianObjects[i].z-oldZ),2));
                         
-                        speed = distance/(pedFrame-lastSeen[animation.rows[pedFrame].value[i][3]][0]);
+                        speed = distance/(pedFrame-lastSeen[pedestrianData.rows[pedFrame].value[i][3]][0]);
                         particles.colors[i].setHSV(hueForSpeed(speed),1,1);
 				    }
 				    
@@ -704,7 +729,7 @@ function drawPedestrians() {
                 
                 
                 
-                if (isPlaying) lastSeen[animation.rows[pedFrame].value[i][3]] = [pedFrame,i];
+                if (isPlaying) lastSeen[pedestrianData.rows[pedFrame].value[i][3]] = [pedFrame,i];
                 
 			} else {
 				//pedestrianObjects[i].visible = false;
@@ -719,7 +744,7 @@ function drawPedestrians() {
 		particles.colorsNeedUpdate = true;
 
 		$("#slider-range-min").slider('value', pedFrame);
-		$('#frameCounter').text(pedFrame+"/"+animation.rows.length);
+		$('#frameCounter').text(pedFrame+"/"+pedestrianData.rows.length);
 		if (isPlaying) pedFrame++;
 	} else {
 		//hide all objects
@@ -728,7 +753,7 @@ function drawPedestrians() {
 		pedFrame = 0;
 		lastSeen = [];
 		$("#slider-range-min").slider('value', 0);
-		$('#frameCounter').text("0/"+animation.rows.length);
+		$('#frameCounter').text("0/"+pedestrianData.rows.length);
 		//TODO: cancel timer
 	}
 }

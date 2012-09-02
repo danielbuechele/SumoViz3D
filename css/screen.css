@@ -79,10 +79,18 @@ html, body {
     float: left;
 }
 
-#scale {
+#legend {
     position: absolute;
     bottom: 10px;
     left: 10px;
+}
+
+#legend > div {
+    margin-right: 15px;
+}
+
+#scale {
+    float: left;
     z-index: 100;
     border-left: 2px solid black;
     border-right: 2px solid black;
@@ -94,6 +102,53 @@ html, body {
     border: none;
     border-bottom: 2px solid black;
     margin: 0;
+}
+
+#scale-coloring {
+    float: left;
+}
+
+#scale-coloring .colorspace {
+    width: 110px;
+    height: 12px;
+    border: 1px solid black;
+    line-height: 12px;
+    padding-left: 1px;
+    padding-right: 1px;
+}
+
+#scale-coloring .min {
+    float: left;
+}
+
+#scale-coloring .max {
+    float: right;
+}
+
+#scale-coloring .colortype {
+    text-align: center;
+}
+
+.color-speed {
+    background: #ff0004; /* Old browsers */
+    background: -moz-linear-gradient(left, hsl(359,100%,50%) 0%, hsl(240,100%,50%) 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, right top, color-stop(0%,hsl(359,100%,50%)), color-stop(100%,hsl(240,100%,50%))); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(left, hsl(359,100%,50%) 0%,hsl(240,100%,50%) 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(left, hsl(359,100%,50%) 0%,hsl(240,100%,50%) 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(left, hsl(359,100%,50%) 0%,hsl(240,100%,50%) 100%); /* IE10+ */
+    background: linear-gradient(to right, hsl(359,100%,50%) 0%,hsl(240,100%,50%) 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ff0004', endColorstr='#0000ff',GradientType=1 ); /* IE6-9 */
+}
+
+.color-density {
+    background: #3fff00; /* Old browsers */
+    background: -moz-linear-gradient(left, hsl(105,100%,50%) 0%, hsl(0,100%,50%) 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, right top, color-stop(0%,hsl(105,100%,50%)), color-stop(100%,hsl(0,100%,50%))); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(left, hsl(105,100%,50%) 0%,hsl(0,100%,50%) 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(left, hsl(105,100%,50%) 0%,hsl(0,100%,50%) 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(left, hsl(105,100%,50%) 0%,hsl(0,100%,50%) 100%); /* IE10+ */
+    background: linear-gradient(to right, hsl(105,100%,50%) 0%,hsl(0,100%,50%) 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#3fff00', endColorstr='#ff0000',GradientType=1 ); /* IE6-9 */
 }
 
 .code {

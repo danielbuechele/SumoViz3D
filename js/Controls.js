@@ -149,14 +149,14 @@ THREE.SphereControls = function ( camera, domElement ) {
             
             $("#object-settings").dialog("option", "title", "Object Settings: "+selectedObject.name);
             
-            if (geometryData[selectedObject.number].type!="obstacle" ||
+            if (geometryData.rows[selectedObject.number].value.type!="obstacle" ||
                 selectedObject.name.indexOf("tree") != -1 || 
                 selectedObject.name.indexOf("plant") != -1) {
                 $("#object-settings .converter").hide();
             } else {
                 $("#object-settings .converter").show();
             }
-            $("#object-settings .code").text(geometryData[selectedObject.number].type);
+            $("#object-settings .code").text(geometryData.rows[selectedObject.number].value.type);
             $("#object-settings").dialog("open");
 
         }
