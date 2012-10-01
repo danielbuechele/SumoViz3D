@@ -57,7 +57,7 @@ html, body {
     margin-left: 50px;
 }
 
-#nextbutton, #prevbutton, #settingsbutton {
+#nextbutton, #prevbutton, #settingsbutton, #screenshotbutton {
     margin-right: 5px;
 	padding: 5px;
 }

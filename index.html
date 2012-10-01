@@ -22,7 +22,7 @@
         <div id="nextbutton" href="" class="ui-state-default ui-corner-all pull-left"><span class="ui-icon ui-icon-seek-prev">prev</span></div>
 		<div id="prevbutton" href="" class="ui-state-default ui-corner-all pull-left"><span class="ui-icon ui-icon-seek-next">next</span></div>
 		<div id="settingsbutton" href="" class="ui-state-default ui-corner-all pull-left"><span class="ui-icon ui-icon-wrench">settings</span></div>
-		<div id="" href="" class="ui-state-default ui-corner-all pull-left"><span class="ui-icon ui-icon-video">next</span></div>
+		<div id="screenshotbutton" onclick="downloadScreen()" class="ui-state-default ui-corner-all pull-left"><span class="ui-icon ui-icon-image">download</span></div>
 
     </div>
     
@@ -72,6 +72,8 @@
 
 <script type="text/javascript" src="js/jquery-1.7.2.min.js"></script>
 <script type="text/javascript" src="js/jquery-ui-1.8.21.custom.min.js"></script>
+<script src="js/FileSaver.js"></script>
+<script src="js/canvas-toBlob.min.js"></script>
 <script src="js/three.min.js"></script>
 <script src="js/ColladaLoader.js"></script>
 <script src="js/Stats.js"></script>

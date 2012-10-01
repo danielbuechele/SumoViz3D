@@ -7,6 +7,7 @@ $(function() {
 		max: pedestrianData.rows.length,
 		slide: function( event, ui ) {
 			pedFrame = ui.value;
+			if (!isPlaying) updatePedestrians();
 		}
 	});
 
@@ -83,9 +84,13 @@ $(function() {
 });
 
 
+
 function downloadScreen() {
-	console.log(renderer.domElement.toDataURL());
-	
+
+    renderer.domElement.toBlob(function(blob) {
+      saveAs(blob, "sumoviz.png");
+    });
+    
 }
 
 function colorByGroups() {
@@ -120,6 +125,8 @@ function coloringChanged() {
         $("#scale-coloring .colorspace").addClass('color-density');
         
     }
+    
+    updatePedestrians();
 }
 
 function deleteObject(myObject) {
@@ -170,9 +177,12 @@ function readObjectSettings() {
 function convertObject(to, myObject) {
 
     if (!myObject) myObject = selectedObject;
-        
+
+    console.log(myObject);
+    
+    console.log("test");
     scene.remove(geometryObjects[parseInt(myObject.number)]);
-    geometryData.rows[parseInt(myObject.number)].value.name = to+"_"+geometryData[parseInt(myObject.number)].name;
+    geometryData.rows[parseInt(myObject.number)].value.name = to+"_"+geometryData.rows[parseInt(myObject.number)].value.name;
     geometryData.rows[parseInt(myObject.number)].value.type = "obstacle"; //not necessary as only obstacles are convertable
     geometryObjects[parseInt(myObject.number)] = null;
     
@@ -223,9 +233,14 @@ function togglePlay() {
 	if (!isPlaying) {
 		$("#playbutton span").removeClass("ui-icon-play");
 		$("#playbutton span").addClass("ui-icon-pause");
+		pedestrianTimer = setInterval(updatePedestrians, 1000/5);
+		
 	} else {
 		$("#playbutton span").removeClass("ui-icon-pause");
 		$("#playbutton span").addClass("ui-icon-play");
+        
+        //cancel Timer
+        clearInterval(pedestrianTimer);
 	}
 	isPlaying = !isPlaying;
 }
@@ -244,6 +259,8 @@ var pedestrianGeometry;
 var selectedObject;
 
 var globalScale;
+
+var pedestrianTimer;
 
 var loader = new THREE.ColladaLoader();
 
@@ -266,7 +283,7 @@ function init() {
 		NEAR = 0.1,
 		FAR = 1000;
 
-	renderer = new THREE.WebGLRenderer({antialias: true});
+	renderer = new THREE.WebGLRenderer({antialias: true, preserveDrawingBuffer: true });
 	
 	renderer.shadowMapEnabled = true;
 	renderer.shadowMapSoft = true;
@@ -396,7 +413,6 @@ function init() {
 
 
 	// draw!
-	setInterval(updatePedestrians, 1000/5);
 	renderer.render(scene, camera);  
 	
 	//update on window resize
@@ -483,7 +499,7 @@ function createPedestrians() {
             }
             
             if ($("#pedestriancoloring").val()=="groups" && groupData) {colorByGroups();}
-        
+            if (!isPlaying) updatePedestrians();
         });
     } else {
     
@@ -519,7 +535,10 @@ function createPedestrians() {
         
         if ($("#pedestriancoloring").val()=="groups" && groupData) {colorByGroups();}
     
+        if (!isPlaying) updatePedestrians();
     }
+    
+    
 
 }
 
@@ -769,7 +788,6 @@ var pedFrame = 0;
 function updatePedestrians() {
 
 
-    //PARTICLES
 	if (pedestrianData.rows[pedFrame]) {
 		for (i=0;i<=maxPedestrianId;i++) {
 			if (pedestrianData.rows[pedFrame].value[i]) {
@@ -783,8 +801,8 @@ function updatePedestrians() {
                         currentX = pedestrianData.rows[pedFrame].value[i][0];
                         currentZ = pedestrianData.rows[pedFrame].value[i][1];
                         direction = new THREE.Vector3(futureX,0,futureZ)
-                        direction.subSelf(new THREE.Vector3(currentX,0,currentZ));
-                        //if ( i == 1)    console.log(Math.acos( direction.dot( new THREE.Vector3(1,0,0) ) ));
+                        direction.subSelf(new THREE.Vector3(currentX,0,currentZ)).normalize();
+
                         pedestrianObjects[i].rotation.z = Math.PI/2+Math.acos( direction.dot( new THREE.Vector3(0,0,1) ) );
                     }
                     //position models
