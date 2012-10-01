@@ -1,6 +1,6 @@
 # SumoViz3D
 
-![Screenshot of SumoViz3D](screennshot.png)
+![Screenshot of SumoViz3D](https://raw.github.com/danielbuechele/SumoViz3D/master/screenshot.png)
 
 This is a WebGL-based post-visualization of pedestrian simulation data. The results of a simulation (including geometry and pedestrian space-time-coordinates) are displayed in a fully interactive 3D-space which can be manipulated by the viewer.
 
