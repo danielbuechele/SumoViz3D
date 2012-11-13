@@ -1,5 +1,40 @@
 
 $(function() {
+	
+	
+	//load Data
+
+	var file = document.URL.substring(document.URL.indexOf("?file=")).substring(6);
+	jQuery.getScript("http://www.cip.ifi.lmu.de/~buechele/data.js?file="+file);
+
+	
+	//fetch exsisting simulations
+    jQuery.getJSON("http://localhost:5984/sumoviz3d/_all_docs?startkey=%22_design/%22&endkey=%22_design0%22&include_docs=false&callback=?", function(json) {
+	    for (var i = 0;i<json.rows.length;i++) {
+	    	console.log(json.rows[i].id.replace("_design/",""));
+	    	$('#simulation-selector')
+	    	.append($("<option></option>")
+	    	.attr("value",json.rows[i].id.replace("_design/",""))
+	    	.text(json.rows[i].id.replace("_design/",""))); 
+	    }
+    });
+    
+    $("#importer").dialog({
+    	close: function(event, ui) {$("#loadbutton").removeClass("ui-state-active");},
+    	autoOpen: false,
+    	title: "Load file"
+    });
+    
+    $("#loadbutton").click(function(){
+    	if ($("#importer").dialog("isOpen")) {
+    		$("#importer").dialog("close");
+    		$(this).removeClass("ui-state-active");
+    	} else {
+    		$("#importer").dialog("open");
+    		$(this).addClass("ui-state-active");
+    	}
+    });
+
 	$( "#slider-range-min" ).slider({
 		range: "min",
 		value: 0,
@@ -83,6 +118,12 @@ $(function() {
     });
 });
 
+
+function loadData() {
+    var url = window.location.protocol + '//' + window.location.hostname + window.location.pathname + "?file="+$("#simulation-selector").val();
+    window.location.href = url;
+    
+}
 
 
 function downloadScreen() {

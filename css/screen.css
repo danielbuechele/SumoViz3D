@@ -52,12 +52,13 @@ html, body {
     text-align: center;
 }
 
-#playbutton {
+#loadbutton {
     padding: 5px;
     margin-left: 50px;
+    margin-right: 5px;
 }
 
-#nextbutton, #prevbutton, #settingsbutton, #screenshotbutton {
+#nextbutton, #prevbutton, #settingsbutton, #screenshotbutton, #playbutton {
     margin-right: 5px;
 	padding: 5px;
 }

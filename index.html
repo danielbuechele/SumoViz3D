@@ -16,6 +16,7 @@
     
     <div id="hud">
         <img class="pull-left" src="img/logo.png" alt="" />
+        <div id="loadbutton" href="" class="ui-state-default ui-corner-all pull-left"><span class="ui-icon ui-icon-folder-open">load</span></div>
         <div id="playbutton" href="" class="ui-state-default ui-corner-all pull-left"><span class="ui-icon ui-icon-play">play</span></div>
         <div class="pull-left" id="slider-range-min"></div>
         <div class="pull-left" id="frameCounter">0/0</div>
@@ -50,6 +51,18 @@
             <option value="textures/concrete.jpg">concrete</option>
         </select><br /><br />
         <a class="button fullwidth" href="javascript:clearSettings()">Delete custom settings</a>
+    </div>
+    
+    <div id="importer">
+        <label>simulations:</label>
+        <select id="simulation-selector">
+        </select><br /><br />
+        <a class="button fullwidth" href="javascript:loadData()">open</a><br /><br />
+        <hr /><br />
+        <form action="upload" method="POST" id="uploadform" name="uploadform">
+            <input type="file" name="uploadfile" id="uploadfile" /><br /><br />
+            <a class="button fullwidth" onclick="$('#uploadform').submit()">upload file</a>
+        </form>
     </div>
     
     <div id="object-settings">
