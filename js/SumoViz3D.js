@@ -404,10 +404,14 @@ function init() {
 	controls = new THREE.SphereControls(camera, renderer.domElement);
 	controls.lookAt = new THREE.Vector3(geometrySize.x/2*globalScale,0,geometrySize.y/2*globalScale);
   
+  
+  //settings must be loaded before geometry is drawn first time
+  loadSettings();
+  
+  
     createPedestrians();  
 	
-    //settings must be loaded before geometry is drawn first time
-    loadSettings();
+    
     
     drawGeometry();
 
@@ -786,7 +790,8 @@ function animate() {
 var pedFrame = 0;
 
 function updatePedestrians() {
-
+	
+	if (pedestrianObjects.length==0) return;
 
 	if (pedestrianData.rows[pedFrame]) {
 		for (i=0;i<=maxPedestrianId;i++) {
